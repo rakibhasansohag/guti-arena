@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import './tokens.css';
+
+/* shadcn/ui semantic colours, mapped onto the clay and chalk tokens. One light theme only. */
+@theme inline {
+  --font-heading: var(--font-display);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: var(--color-earth);
+  --foreground: var(--color-charcoal);
+  --card: var(--color-chalk);
+  --card-foreground: var(--color-charcoal);
+  --popover: var(--color-chalk);
+  --popover-foreground: var(--color-charcoal);
+  --primary: var(--color-clay);
+  --primary-foreground: var(--color-chalk);
+  --secondary: var(--color-chalk);
+  --secondary-foreground: var(--color-charcoal);
+  --muted: color-mix(in oklch, var(--color-chalk), var(--color-earth) 40%);
+  --muted-foreground: color-mix(in oklch, var(--color-charcoal), var(--color-earth) 30%);
+  --accent: color-mix(in oklch, var(--color-chalk), var(--color-clay) 15%);
+  --accent-foreground: var(--color-charcoal);
+  --destructive: var(--color-piece-red);
+  --border: rgb(43 38 34 / 0.2);
+  --input: rgb(43 38 34 / 0.25);
+  --ring: var(--color-clay);
+  --radius: 1.25rem; /* 20px */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+}

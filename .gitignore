@@ -1,0 +1,17 @@
+# Reference footage (local only)
+game_play.mp4
+*.mp4
+
+# Dependencies and builds
+node_modules
+dist
+.wrangler
+*.tsbuildinfo
+coverage
+
+# Tool scratch
+graphify-out
+.claude/worktrees
+.vite
+.DS_Store
+*.log

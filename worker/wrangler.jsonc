@@ -1,0 +1,22 @@
+// https://developers.cloudflare.com/workers/wrangler/configuration/
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "guti-arena",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-10",
+  "observability": { "enabled": true },
+  "upload_source_maps": true,
+  // The built client, with single-page-app fallback. Only /api/* reaches the Worker.
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  // One SQLite-backed Durable Object per room.
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "Room" }],
+  },
+  "exports": {
+    "Room": { "type": "durable-object", "storage": "sqlite" },
+  },
+}

@@ -1,0 +1,59 @@
+/* Guti Arena design tokens. Source of truth: docs/DESIGN.md.
+   `static` emits every variable, so the board SVG and shadcn mapping can use var(--color-*) freely. */
+
+@theme static {
+  /* Ground and UI */
+  --color-earth: #c9a27a;
+  --color-clay: #b5653d;
+  --color-charcoal: #2b2622;
+  --color-chalk: #f4ede1;
+
+  /* Pieces, by seat: 0 north blue, 1 east yellow, 2 south white, 3 west red */
+  --color-piece-blue: #1f5fbf;
+  --color-piece-yellow: #e8b923;
+  --color-piece-white: #f7f4ec;
+  --color-piece-red: #d1342c;
+
+  /* Latin font first; Bangla glyphs fall through to the Bangla font of the same role. */
+  --font-sans: 'Inter', 'Anek Bangla', system-ui, sans-serif;
+  --font-display: 'Baloo 2', 'Baloo Da 2', system-ui, sans-serif;
+
+  --radius-clay: 20px;
+  --shadow-clay: 0 8px 20px rgb(43 38 34 / 0.25), inset 0 2px 0 rgb(255 255 255 / 0.35);
+  --ease-clay: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --breakpoint-3xl: 120rem; /* 1920px */
+  --breakpoint-4xl: 160rem; /* 2560px */
+}
+
+:root {
+  --duration-fade: 200ms;
+  --duration-ui: 350ms;
+  --duration-piece-move: 350ms;
+  --duration-piece-settle: 120ms;
+  --duration-capture-jump: 450ms;
+  --duration-capture-fade: 250ms;
+}
+
+/* Scale everything rem-based up on big screens so nothing sits tiny in the middle. */
+@media (min-width: 1920px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+@media (min-width: 2560px) {
+  html {
+    font-size: 131.25%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

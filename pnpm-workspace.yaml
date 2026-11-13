@@ -1,0 +1,8 @@
+packages:
+  - engine
+  - web
+  - worker
+
+onlyBuiltDependencies:
+  - esbuild
+  - workerd

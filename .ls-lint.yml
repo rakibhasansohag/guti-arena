@@ -1,0 +1,23 @@
+ls:
+  .dir: kebab-case
+  .ts: kebab-case
+  .tsx: kebab-case
+  .d.ts: kebab-case
+  .js: kebab-case
+  .mts: kebab-case
+  .css: kebab-case
+  .json: kebab-case
+  .jsonc: kebab-case
+  .yaml: kebab-case
+  .svg: kebab-case
+  .png: kebab-case
+  .md: kebab-case | screamingsnakecase
+
+ignore:
+  - .git
+  - node_modules
+  - '**/node_modules'
+  - '**/dist'
+  - '**/.wrangler'
+  - graphify-out
+  - .claude

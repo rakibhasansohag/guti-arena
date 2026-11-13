@@ -5,6 +5,12 @@ ls:
   .d.ts: kebab-case
   .js: kebab-case
   .mts: kebab-case
+  .mjs: kebab-case
+  .html: kebab-case
+  .txt: kebab-case
+  .xml: kebab-case
+  .webmanifest: kebab-case
+  .woff2: kebab-case
   .css: kebab-case
   .json: kebab-case
   .jsonc: kebab-case
@@ -18,6 +24,7 @@ ignore:
   - node_modules
   - '**/node_modules'
   - '**/dist'
+  - '**/dist-ssr'
   - '**/.wrangler'
   - graphify-out
   - .claude

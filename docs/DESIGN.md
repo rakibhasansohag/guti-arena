@@ -43,7 +43,9 @@ Installed through Fontsource and imported in `web/src/main.tsx`.
 | Display (`font-display`, all `h1` to `h3`) | Baloo 2 | Baloo Da 2  |
 | Body and UI (`font-sans`)                  | Inter   | Anek Bangla |
 
-Each stack lists the Latin font first and the Bangla font second, so mixed Bangla and English text picks the right font per glyph with no language switch. Weights loaded: body 400 and 600, display 600 and 800. Add a weight in `main.tsx` before using it.
+Each stack lists the Latin font first and the Bangla font second, so mixed Bangla and English text picks the right font per glyph with no language switch. Loaded, as single-script subsets only (Latin for Inter and Baloo 2, Bengali for Anek Bangla and Baloo Da 2): body 400 and 600, display 800. Add a weight in `main.tsx` before using it; every extra face costs about 20 to 60 KB.
+
+Text on clay uses `clay-deep` (`#9A4F2C`, 5.1:1 with chalk). Plain `clay` is 3.7:1 with chalk, so keep it for large text, icons and accents.
 
 ## Shape and depth
 
@@ -63,6 +65,18 @@ Each stack lists the Latin font first and the Bangla font second, so mixed Bangl
 | Turn timer                                  | Ring drains linearly; pulses in the last 5 seconds                         |
 
 Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and others). Accordions animate their height and tabs crossfade; nothing snaps. Under `prefers-reduced-motion`, everything is instant or fade-only (a global rule in `tokens.css` already shortens CSS transitions; Motion components should check `useReducedMotion`).
+
+### Hover and press
+
+- Pill buttons (`CTA` in `web/src/share/site-chrome.tsx`) step up 2 px on hover and press down 1 px on click, over 300 ms `ease-clay`.
+- Text links draw an underline from the left on hover.
+- The FAQ accordion opens and closes its height over 350 ms `ease-clay` (set with `--tw-duration` and `--tw-ease` on the accordion root).
+- No scroll-triggered reveals or parallax. The one ambient loop is the hero board's piece hopping to the centre and back every 3.2 s.
+
+## Shared pieces
+
+- `BoardArt` (`web/src/share/board-art.tsx`) draws the board from the engine's `POINTS` and `LINES`, with pebble pieces, seat marks, the wobble filter, optional arrows (jumps arc over the piece they take) and faded "ghost" pieces. Use it for any static board picture; the playable board lives in `web/src/game/`.
+- `SEAT_FILL` (`web/src/share/seat-colours.ts`) maps seats to the piece colour variables.
 
 ## Layout
 

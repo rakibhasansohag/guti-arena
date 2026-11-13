@@ -5,6 +5,7 @@ game_play.mp4
 # Dependencies and builds
 node_modules
 dist
+dist-ssr
 .wrangler
 *.tsbuildinfo
 coverage

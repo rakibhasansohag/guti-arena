@@ -5,6 +5,7 @@
   /* Ground and UI */
   --color-earth: #c9a27a;
   --color-clay: #b5653d;
+  --color-clay-deep: #9a4f2c; /* clay for surfaces that carry text: 5.1:1 with chalk */
   --color-charcoal: #2b2622;
   --color-chalk: #f4ede1;
 

@@ -16,8 +16,11 @@ No betting, wagering or money features anywhere, including copy and art.
   - `test/`: Vitest.
 - `web/`: Vite, React, TypeScript, Tailwind CSS v4, shadcn/ui (`src/components/ui/`), Motion, React Router v8 (declarative mode, routes in `src/app.tsx`).
   - `src/styles/tokens.css`: design tokens. `src/styles/index.css`: Tailwind entry and shadcn mapping.
-  - `src/i18n/`: `useT(namespace)` over plain dictionaries, `<namespace>.<bn|en>.ts`. Language is the `lang` value in `localStorage`, default `bn`.
-  - `src/pages/`: one lazy-loaded page per route: `/`, `/how-to-play`, `/play`, `/r/:code`.
+  - `src/i18n/`: `useT(namespace)` over plain dictionaries, `<namespace>.<bn|en>.ts`. Language is a `?lang=bn|en` link (remembered), else the `lang` value in `localStorage`, default `bn`.
+  - `src/pages/`: one lazy-loaded page per route: `/`, `/how-to-play`, `/play`, `/r/:code`. Each page renders its own `<title>` (React 19 hoists it); `index.html` only has a fallback.
+  - `src/share/`: `BoardArt` (static board drawing from the engine's points and lines), `ShareCard` and `shareInvite` (result card and room invites), `Seo` (per-page head tags), `SiteHeader`, `SiteFooter`, `LangSwitch`.
+  - Prerender: `pnpm --filter web build` also renders `/` and `/how-to-play` to static Bangla HTML (`src/entry-server.tsx`, `scripts/prerender.mjs`); `main.tsx` hydrates it. Anything those two pages render must give the same markup on server and client: no `window`, `localStorage` or random values during render.
+  - `pnpm --filter web make-images` regenerates `public/og/guti-arena.png` and `public/icons/*` with headless Edge or Chrome.
 - `worker/`: Cloudflare Worker. `wrangler.jsonc` serves `../web/dist` with single-page-app fallback; only `/api/*` runs the Worker. Durable Object binding `ROOM`, class `Room`, SQLite storage (declared with `exports`). Run `pnpm --filter worker cf-typegen` after editing `wrangler.jsonc`.
 - `docs/DESIGN.md`: the design system.
 

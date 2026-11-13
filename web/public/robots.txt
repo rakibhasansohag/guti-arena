@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+# Room pages are private games.
+Disallow: /r/
+
+Sitemap: https://guti.rakibhasansohag.com/sitemap.xml

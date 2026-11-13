@@ -20,7 +20,16 @@ export type Namespace = keyof typeof dictionaries;
 const KEY = 'lang';
 const listeners = new Set<() => void>();
 
+const inBrowser = typeof document !== 'undefined';
+
+/** A `?lang=bn|en` link wins and is remembered; otherwise the stored choice; default Bangla. */
 function readLang(): Lang {
+  if (!inBrowser) return 'bn'; // build-time prerender
+  const fromUrl = new URLSearchParams(location.search).get('lang');
+  if (fromUrl === 'bn' || fromUrl === 'en') {
+    store(fromUrl);
+    return fromUrl;
+  }
   try {
     return localStorage.getItem(KEY) === 'en' ? 'en' : 'bn';
   } catch {
@@ -28,17 +37,23 @@ function readLang(): Lang {
   }
 }
 
-let current: Lang = readLang();
-document.documentElement.lang = current;
-
-export function setLang(lang: Lang): void {
-  current = lang;
-  document.documentElement.lang = lang;
+function store(lang: Lang): void {
   try {
     localStorage.setItem(KEY, lang);
   } catch {
     // private mode or blocked storage: the choice lasts for this page only
   }
+}
+
+let current: Lang = readLang();
+if (inBrowser) document.documentElement.lang = current;
+
+export const getLang = (): Lang => current;
+
+export function setLang(lang: Lang): void {
+  current = lang;
+  document.documentElement.lang = lang;
+  store(lang);
   for (const l of listeners) l();
 }
 
@@ -49,6 +64,7 @@ export function useLang(): Lang {
       return () => listeners.delete(cb);
     },
     () => current,
+    () => 'bn', // prerendered HTML is Bangla
   );
 }
 

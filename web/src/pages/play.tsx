@@ -15,11 +15,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { askAi } from '@/game/ask-ai';
 import { useNum } from '@/game/use-num';
-import { GameBoard, MuteButton } from '@/game';
+import { GameBoard, GameHeader, SEGMENT, SeatPip } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { LangSwitch, SEAT_COLOUR_NAME, SEAT_FILL, SeatMark, Seo } from '@/share';
-import { CTA, Logo, WRAP } from '@/share/site-chrome';
+import { SEAT_COLOUR_NAME, Seo } from '@/share';
+import { CTA, WRAP } from '@/share/site-chrome';
 
 type Kind = 'human' | AiLevel;
 type Count = 2 | 3 | 4;
@@ -90,19 +90,7 @@ export default function Page() {
   return (
     <div className="flex min-h-dvh flex-col">
       <Seo path="/play" title={t('seo.title')} description={t('seo.description')} />
-      <header className={cn(WRAP, 'flex items-center justify-between gap-3 py-3')}>
-        <Link
-          to="/"
-          className="flex items-center gap-2 rounded-full font-display text-xl font-extrabold transition-opacity duration-200 hover:opacity-80"
-        >
-          <Logo />
-          <span lang="en">Guti Arena</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <MuteButton />
-          <LangSwitch />
-        </div>
-      </header>
+      <GameHeader />
 
       <main className="flex flex-1 flex-col items-center justify-center pb-4">
         {state ? (
@@ -139,28 +127,6 @@ export default function Page() {
     </div>
   );
 }
-
-function Pip({ seat, className }: { seat: Seat; className?: string }) {
-  return (
-    <svg viewBox="-0.5 -0.5 1 1" aria-hidden="true" className={cn('size-7 shrink-0', className)}>
-      <circle
-        r={0.42}
-        fill={SEAT_FILL[seat]}
-        stroke="var(--color-charcoal)"
-        strokeWidth={seat === 2 ? 0.07 : 0.045}
-      />
-      <SeatMark
-        seat={seat}
-        x={0}
-        y={0}
-        colour={seat === 1 || seat === 2 ? 'var(--color-charcoal)' : 'var(--color-chalk)'}
-      />
-    </svg>
-  );
-}
-
-const SEGMENT =
-  'h-11 flex-1 rounded-full px-3 font-display text-sm font-extrabold transition-[background-color,color,scale] duration-[200ms,200ms,300ms] ease-clay hover:bg-chalk active:scale-95 aria-pressed:bg-charcoal aria-pressed:text-chalk sm:text-base';
 
 function SetupCard({
   setup,
@@ -205,7 +171,7 @@ function SetupCard({
           {SEATS_FOR[setup.count].map((seat) => (
             <li key={seat} className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <span className="flex w-36 items-center gap-2 font-display font-extrabold">
-                <Pip seat={seat} />
+                <SeatPip seat={seat} />
                 {t(`colour.${SEAT_COLOUR_NAME[seat]}`)}
               </span>
               <div
@@ -286,7 +252,7 @@ function EndCard({
         <ul className="mt-4 flex flex-col gap-2">
           {state.seats.map((s) => (
             <li key={s} className={cn('flex items-center gap-3', s === w && 'font-extrabold')}>
-              <Pip seat={s} />
+              <SeatPip seat={s} />
               <span className="flex-1 truncate font-display font-extrabold">{name(s)}</span>
               <span>
                 {t(counts[s] === 1 ? 'badge.onePiece' : 'badge.pieces', { n: num(counts[s]) })}

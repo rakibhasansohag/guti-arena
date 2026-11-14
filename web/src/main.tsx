@@ -2,9 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 // Only the scripts we set: Latin from Inter and Baloo 2, Bengali from Anek Bangla and Baloo Da 2.
 import '@fontsource/inter/latin-400.css';
-import '@fontsource/inter/latin-600.css';
 import '@fontsource/anek-bangla/bengali-400.css';
-import '@fontsource/anek-bangla/bengali-600.css';
 import '@fontsource/baloo-2/latin-800.css';
 import '@fontsource/baloo-da-2/bengali-800.css';
 import './styles/index.css';

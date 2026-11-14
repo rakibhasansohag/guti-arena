@@ -43,7 +43,7 @@ Installed through Fontsource and imported in `web/src/main.tsx`.
 | Display (`font-display`, all `h1` to `h3`) | Baloo 2 | Baloo Da 2  |
 | Body and UI (`font-sans`)                  | Inter   | Anek Bangla |
 
-Each stack lists the Latin font first and the Bangla font second, so mixed Bangla and English text picks the right font per glyph with no language switch. Loaded, as single-script subsets only (Latin for Inter and Baloo 2, Bengali for Anek Bangla and Baloo Da 2): body 400 and 600, display 800. Add a weight in `main.tsx` before using it; every extra face costs about 20 to 60 KB.
+Each stack lists the Latin font first and the Bangla font second, so mixed Bangla and English text picks the right font per glyph with no language switch. Loaded, as single-script subsets only (Latin for Inter and Baloo 2, Bengali for Anek Bangla and Baloo Da 2): body 400 and display 800 only. Buttons, pills, labels, nav links and the language switch use the display face (extrabold) rather than a semibold body weight, so the first screen loads four font files. Add a weight in `main.tsx` before using it; every extra face costs about 20 to 60 KB and slows the first paint on phones.
 
 Text on clay uses `clay-deep` (`#9A4F2C`, 5.1:1 with chalk). Plain `clay` is 3.7:1 with chalk, so keep it for large text, icons and accents.
 
@@ -75,14 +75,15 @@ Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and ot
 
 ## Shared pieces
 
-- `BoardArt` (`web/src/share/board-art.tsx`) draws the board from the engine's `POINTS` and `LINES`, with pebble pieces, seat marks, the wobble filter, optional arrows (jumps arc over the piece they take) and faded "ghost" pieces. Use it for any static board picture; the playable board lives in `web/src/game/`.
+- `BoardArt` (`web/src/share/board-art.tsx`) draws the board from the engine's `POINTS` and `LINES`, with pebble pieces, seat marks, the wobble filter, optional arrows (jumps arc over the piece they take) and faded "ghost" pieces. Use it for any static board picture; the playable board lives in `web/src/game/`. With `image="hero"` or `"full"` it shows the pre-drawn WebP in `web/public/board/` (800 to 2400 px, from `pnpm --filter web make-images`) instead of inline SVG: big board pictures above the fold must use this, because a detailed SVG rasterises on the main thread and delays the first paint.
 - `SEAT_FILL` (`web/src/share/seat-colours.ts`) maps seats to the piece colour variables.
 
 ## Layout
 
 - Mobile first.
 - Check every page at 390, 1440, 1920, 2560, 3440 and 3840 px wide.
-- At 1920 px (`3xl:`) and 2560 px (`4xl:`) the root font size steps up, and containers, type and spacing should scale up too, so nothing sits tiny in the middle or stretches edge to edge.
+- The root font size steps up at 1920 px (112.5%, also `3xl:`), 2560 px (131.25%, also `4xl:`), 3200 px (150%) and 3800 px (175%). Size things in rem so they follow, and scale containers, type and spacing up with `3xl:` and `4xl:`, so nothing sits tiny in the middle or stretches edge to edge. At 3440 and 3840 px the page container spans about two thirds of the screen.
+- Below-the-fold sections on long pages use `content-visibility: auto` so the first screen paints first.
 
 ## References
 

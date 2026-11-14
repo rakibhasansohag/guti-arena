@@ -13,8 +13,6 @@ import { Input } from '@/components/ui/input';
 import { useLang, useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { BoardArt, SeatMark } from '@/share/board-art';
-// Inlined as a data URI so the hero paints with the first frame instead of waiting on a request.
-import boardHero from '@/share/board-hero.svg?inline';
 import { SEAT_FILL } from '@/share/seat-colours';
 import { Seo, SITE_URL } from '@/share/seo';
 import { CTA, REPO_URL, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
@@ -28,7 +26,9 @@ const FAQ = ['account', 'free', 'phone', 'online', 'capture', 'offline'];
 /** Room codes: 5 letters, no vowels. */
 const CODE = /^[B-DF-HJ-NP-TV-Z]{5}$/;
 
-const SECTION = 'py-20 lg:py-28 3xl:py-36';
+// Below-the-fold sections skip style and layout until they near the viewport, so the hero paints first.
+const LATER = '[content-visibility:auto] [contain-intrinsic-size:auto_900px]';
+const SECTION = `py-20 lg:py-28 3xl:py-36 ${LATER}`;
 const H2 = 'font-display text-3xl font-extrabold leading-tight sm:text-4xl 3xl:text-5xl';
 const CARD = 'rounded-clay bg-card p-6 shadow-clay 3xl:p-8';
 
@@ -45,7 +45,7 @@ function JoinForm() {
   };
   return (
     <form onSubmit={submit} noValidate className="flex max-w-md flex-col gap-2">
-      <label htmlFor="room-code" className="font-semibold">
+      <label htmlFor="room-code" className="font-display font-extrabold">
         {t('join.label')}
       </label>
       <div className="flex gap-2">
@@ -70,7 +70,11 @@ function JoinForm() {
         </Button>
       </div>
       {error && (
-        <p id="room-code-error" role="alert" className="text-sm font-semibold text-destructive">
+        <p
+          id="room-code-error"
+          role="alert"
+          className="text-sm font-display font-extrabold text-destructive"
+        >
           {t('join.error')}
         </p>
       )}
@@ -129,8 +133,8 @@ export default function Landing() {
             <h1 className="font-display text-4xl font-extrabold leading-[1.1] text-balance sm:text-5xl lg:text-6xl 3xl:text-7xl">
               {t('hero.title')}
             </h1>
-            <p className="max-w-xl text-lg text-pretty 3xl:text-xl">{t('hero.sub')}</p>
-            <p className="w-fit rounded-full bg-chalk/70 px-4 py-1.5 text-sm font-semibold shadow-clay">
+            <p className="max-w-xl text-lg 3xl:text-xl">{t('hero.sub')}</p>
+            <p className="w-fit rounded-full bg-chalk/70 px-4 py-1.5 text-sm font-display font-extrabold shadow-clay">
               {t('hero.fact')}
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -146,7 +150,7 @@ export default function Landing() {
           <BoardArt
             pieces={START}
             hop={{ from: 'g-2-3', to: 'g-3-3' }}
-            src={boardHero}
+            image="hero"
             label={t('seo.board')}
             className="mx-auto aspect-square w-full max-w-[min(100%,78svh)]"
           />
@@ -232,7 +236,7 @@ export default function Landing() {
                 </span>
                 {t(`how.${n}.title`)}
               </h3>
-              <p className="text-pretty">{t(`how.${n}.body`)}</p>
+              <p>{t(`how.${n}.body`)}</p>
             </li>
           ))}
         </ol>
@@ -244,7 +248,7 @@ export default function Landing() {
             <h2 id="story-title" className={H2}>
               {t('story.title')}
             </h2>
-            <p className="max-w-xl text-lg text-pretty 3xl:text-xl">{t('story.body')}</p>
+            <p className="max-w-xl text-lg 3xl:text-xl">{t('story.body')}</p>
             <ul className="flex flex-col gap-1 font-display text-4xl font-extrabold text-clay sm:text-5xl 3xl:text-6xl">
               <li>{t('story.points')}</li>
               <li>{t('story.pieces')}</li>
@@ -277,7 +281,7 @@ export default function Landing() {
               <h3 className="font-display text-xl font-extrabold 3xl:text-2xl">
                 {t(`features.${k}.title`)}
               </h3>
-              <p className="text-pretty">{t(`features.${k}.body`)}</p>
+              <p>{t(`features.${k}.body`)}</p>
             </li>
           ))}
         </ul>
@@ -297,10 +301,10 @@ export default function Landing() {
         >
           {FAQ.map((k) => (
             <AccordionItem key={k} value={k} className="border-charcoal/15">
-              <AccordionTrigger className="py-4 text-base font-semibold hover:no-underline 3xl:text-lg">
+              <AccordionTrigger className="py-4 text-base font-display font-extrabold hover:no-underline 3xl:text-lg">
                 {t(`faq.${k}.q`)}
               </AccordionTrigger>
-              <AccordionContent className="pb-4 text-base text-pretty 3xl:text-lg">
+              <AccordionContent className="pb-4 text-base 3xl:text-lg">
                 {t(`faq.${k}.a`)}
               </AccordionContent>
             </AccordionItem>
@@ -308,7 +312,7 @@ export default function Landing() {
         </Accordion>
       </section>
 
-      <section aria-labelledby="close-title" className="bg-clay-deep text-chalk">
+      <section aria-labelledby="close-title" className={cn('bg-clay-deep text-chalk', LATER)}>
         <div
           className={cn(
             WRAP,
@@ -319,7 +323,7 @@ export default function Landing() {
             <h2 id="close-title" className={H2}>
               {t('close.title')}
             </h2>
-            <p className="max-w-xl text-lg text-pretty">{t('close.body')}</p>
+            <p className="max-w-xl text-lg">{t('close.body')}</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild className={cn(CTA, 'bg-chalk text-charcoal hover:bg-chalk')}>

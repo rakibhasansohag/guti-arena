@@ -78,10 +78,13 @@ interface Props {
    */
   hop?: { from: PointId; to: PointId };
   /**
-   * A pre-drawn image of this same board (src/share/board*.svg from `make-images`, imported with `?inline`). It replaces
-   * the inline drawing: no DOM nodes and no hydration cost for the hero. Full view only.
+   * Use the pre-drawn WebP of this board from `make-images`: 'hero' (start position minus the
+   * hopping piece) or 'full'. No DOM nodes, no hydration and no main-thread rasterising.
+   * Full view only, and above the fold only: it loads at high priority.
    */
-  src?: string;
+  image?: 'hero' | 'full';
+  /** `sizes` for the image's srcset; defaults to full width on phones, half from 1024px. */
+  sizes?: string;
   label: string;
   className?: string;
 }
@@ -93,7 +96,8 @@ export function BoardArt({
   arrows = [],
   ghosts = {},
   hop,
-  src,
+  image,
+  sizes = '(min-width: 1024px) 50vw, 100vw',
   label,
   className,
 }: Props) {
@@ -103,12 +107,15 @@ export function BoardArt({
   const pebble = (seat: Seat) => `#pebble-${seat}-${uid}`;
   const viewBox = view.join(' ');
 
-  const board = src ? (
+  const board = image ? (
     <img
-      src={src}
+      src={`/board/${image}-1200.webp`}
+      srcSet={[800, 1200, 1600, 2400].map((w) => `/board/${image}-${w}.webp ${w}w`).join(', ')}
+      sizes={sizes}
       alt={label}
-      width={1000}
-      height={1000}
+      width={2400}
+      height={2400}
+      fetchPriority="high"
       className={hop ? 'block size-full' : className}
     />
   ) : (

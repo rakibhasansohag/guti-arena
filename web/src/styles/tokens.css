@@ -47,6 +47,17 @@
     font-size: 131.25%;
   }
 }
+/* Ultrawide (3440) and 4K at 1x: keep the page near two thirds of the screen. */
+@media (min-width: 3200px) {
+  html {
+    font-size: 150%;
+  }
+}
+@media (min-width: 3800px) {
+  html {
+    font-size: 175%;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

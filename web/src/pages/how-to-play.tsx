@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { BoardArt, SeatMark } from '@/share/board-art';
-import boardFull from '@/share/board.svg?inline';
 import { SEAT_FILL } from '@/share/seat-colours';
 import { Seo } from '@/share/seo';
 import { CTA, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
@@ -86,10 +85,10 @@ export default function HowToPlay() {
             >
               {t('rules.title')}
             </h1>
-            <p className="max-w-xl text-lg text-pretty 3xl:text-xl">{t('rules.intro')}</p>
+            <p className="max-w-xl text-lg 3xl:text-xl">{t('rules.intro')}</p>
             <h2 className={cn(H2, 'mt-4')}>{t('rules.board.title')}</h2>
-            <p className="max-w-xl text-pretty">{t('rules.board.body')}</p>
-            <p className="max-w-xl text-pretty">{t('rules.board.seats')}</p>
+            <p className="max-w-xl">{t('rules.board.body')}</p>
+            <p className="max-w-xl">{t('rules.board.seats')}</p>
             <ul className="flex gap-3" aria-hidden="true">
               {SEATS.map((s) => (
                 <li key={s}>
@@ -113,7 +112,7 @@ export default function HowToPlay() {
           </div>
           <BoardArt
             pieces={START}
-            src={boardFull}
+            image="full"
             label={t('rules.board.diagram')}
             className="mx-auto aspect-square w-full max-w-[min(100%,70svh)]"
           />
@@ -137,7 +136,7 @@ export default function HowToPlay() {
               <h2 id={`${key}-title`} className={H2}>
                 {t(`rules.${key}.title`)}
               </h2>
-              <p className="text-pretty">{t(`rules.${key}.body`)}</p>
+              <p>{t(`rules.${key}.body`)}</p>
             </section>
           ))}
         </div>
@@ -147,7 +146,7 @@ export default function HowToPlay() {
             <h2 id="turns-title" className={H2}>
               {t('rules.turns.title')}
             </h2>
-            <p className="text-pretty">{t('rules.turns.body')}</p>
+            <p>{t('rules.turns.body')}</p>
           </section>
           <section aria-labelledby="win-title" className={cn(CARD, 'flex flex-col gap-4')}>
             <BoardArt
@@ -159,7 +158,7 @@ export default function HowToPlay() {
             <h2 id="win-title" className={H2}>
               {t('rules.win.title')}
             </h2>
-            <p className="text-pretty">{t('rules.win.body')}</p>
+            <p>{t('rules.win.body')}</p>
           </section>
         </div>
 

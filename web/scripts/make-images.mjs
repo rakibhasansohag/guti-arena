@@ -62,25 +62,23 @@ const jobs = [
   ['icons/apple-touch-icon.png', 180, 180, icon(180, 0.2)],
 ];
 
-// Static board pictures for the rules page and the landing hero (whose hopping piece is drawn
-// live on top, so it is left out here). CSS variables become hex.
-const vars = Object.fromEntries(
-  [...css.matchAll(/(--color-[\w-]+):(#[0-9a-f]{6})/g)].map((m) => [m[1], m[2]]),
-);
-const standalone = (svg) =>
-  svg
-    .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
-    .replace(/var\((--color-[\w-]+)\)/g, (_, v) => vars[v]);
-await writeFile(join(web, 'src', 'share', 'board.svg'), standalone(boardSvg()));
-await writeFile(join(web, 'src', 'share', 'board-hero.svg'), standalone(boardSvg('g-2-3')));
-console.log('wrote src/share/board.svg and src/share/board-hero.svg');
+// Board pictures for the landing hero (its hopping piece is drawn live on top, so it is left out)
+// and the rules page. Raster, not SVG: an SVG image this detailed rasterises on the main thread
+// and held up the largest paint by about half a second. Both sit on the flat earth ground, which
+// is baked in: WebP stores alpha losslessly, and the transparent version was 60% larger.
+const BOARD = 2400;
+const board = (svg) => `<!doctype html><meta charset="utf-8"><style>${css}
+  body { background: #c9a27a; } svg { display: block; width: ${BOARD}px; height: ${BOARD}px; }
+</style>${svg}`;
+const boards = [
+  ['hero', board(boardSvg('g-2-3'))],
+  ['full', board(boardSvg())],
+];
 
 const tmp = await mkdtemp(join(tmpdir(), 'guti-images-'));
-for (const [out, w, h, html] of jobs) {
-  const page = join(tmp, `${out.replace(/\W/g, '-')}.html`);
+const shoot = async (html, w, h, target) => {
+  const page = join(tmp, `${Math.random().toString(36).slice(2)}.html`);
   await writeFile(page, html);
-  await mkdir(join(web, 'public', out, '..'), { recursive: true });
-  const target = join(web, 'public', out);
   execFileSync(browser, [
     '--headless=new',
     '--disable-gpu',
@@ -90,5 +88,37 @@ for (const [out, w, h, html] of jobs) {
     `--screenshot=${target}`,
     pathToFileURL(page).href,
   ]);
+};
+
+for (const [out, w, h, html] of jobs) {
+  await mkdir(join(web, 'public', out, '..'), { recursive: true });
+  await shoot(html, w, h, join(web, 'public', out));
   console.log(`wrote public/${out}`);
+}
+
+// WebP widths for srcset: phones, laptops, and 2K to 4K screens.
+await mkdir(join(web, 'public', 'board'), { recursive: true });
+for (const [name, html] of boards) {
+  const png = join(tmp, `${name}.png`);
+  await shoot(html, BOARD, BOARD, png);
+  for (const width of [800, 1200, 1600, 2400]) {
+    const target = join(web, 'public', 'board', `${name}-${width}.webp`);
+    execFileSync('ffmpeg', [
+      '-v',
+      'error',
+      '-y',
+      '-i',
+      png,
+      '-vf',
+      `scale=${width}:-1`,
+      '-c:v',
+      'libwebp',
+      '-quality',
+      '78',
+      '-pix_fmt',
+      'yuv420p',
+      target,
+    ]);
+    console.log(`wrote public/board/${name}-${width}.webp`);
+  }
 }

@@ -105,7 +105,7 @@ function draw(ctx: CanvasRenderingContext2D, r: ShareCardResult, text: CardText)
   ctx.font = `800 84px ${DISPLAY}`;
   ctx.fillText(text.headline, 88, 270, W - 360);
 
-  ctx.font = `600 28px ${BODY}`;
+  ctx.font = `400 28px ${BODY}`;
   ctx.fillStyle = C.clay;
   ctx.fillText(text.piecesLeft, 88, 340);
 
@@ -121,7 +121,7 @@ function draw(ctx: CanvasRenderingContext2D, r: ShareCardResult, text: CardText)
   if (r.seatColour !== null) pebble(ctx, r.seatColour, W - 210, 240, 96);
 
   ctx.fillStyle = C.charcoal;
-  ctx.font = `600 26px ${BODY}`;
+  ctx.font = `400 26px ${BODY}`;
   ctx.fillText(text.footer, 88, H - 88);
 }
 
@@ -146,8 +146,8 @@ export function ShareCard({ result }: { result: ShareCardResult }) {
       [
         '800 84px "Baloo 2"',
         '800 84px "Baloo Da 2"',
-        '600 28px Inter',
-        '600 28px "Anek Bangla"',
+        '400 28px Inter',
+        '400 28px "Anek Bangla"',
       ].map((f) => document.fonts.load(f)),
     )
       .catch(() => undefined)

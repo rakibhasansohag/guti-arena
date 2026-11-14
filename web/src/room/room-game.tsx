@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { GameBoard, SeatPip, useNum } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { SEAT_COLOUR_NAME, ShareCard } from '@/share';
+import { useSeatName } from '@/game/use-seat-name';
+import { ShareCard } from '@/share';
 import { CTA } from '@/share/site-chrome';
 
 /** Live play from server state. The client never applies a move; it waits for the next `state`. */
@@ -27,7 +28,8 @@ export function RoomGame({
   send: (m: ClientMessage) => void;
 }) {
   const t = useT('room');
-  const name = (s: Seat) => room.seats[s]?.name || t(`colour.${SEAT_COLOUR_NAME[s]}`);
+  const seatName = useSeatName(game.board);
+  const name = (s: Seat) => room.seats[s]?.name || seatName(s);
   const turn = room.seats[game.turn];
   const away = game.winner === null && turn?.kind === 'human' && !turn.connected;
   return (

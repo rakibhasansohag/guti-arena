@@ -292,6 +292,12 @@ export const BOARDS: Record<BoardId, Board> = {
   // 12 each: two rows plus the two right-hand points of the middle row. The centre starts empty.
   quick: fiveBoard('quick', false, [...TWO_ROWS, [3, 2], [4, 2]]),
   lau: lauBoard(),
+  // Bagh-chal: four tigers on the corners; the goats start in the hand.
+  bagh: {
+    ...fiveBoard('bagh', false, []),
+    seats: [0, 2],
+    start: { 0: ['g-0-0', 'g-0-4', 'g-4-0', 'g-4-4'], 1: [], 2: [], 3: [] },
+  },
 };
 
 export const BOARD_IDS = Object.keys(BOARDS) as BoardId[];

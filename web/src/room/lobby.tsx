@@ -4,6 +4,7 @@ import {
   BOARDS,
   DEFAULT_LOOK,
   type AiLevel,
+  type BoardId,
   type ClientMessage,
   type Look,
   type RoomState,
@@ -16,7 +17,8 @@ import { BoardPicker, LookPicker, SEGMENT, SeatPip, SetupLayout } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { savedName } from '@/net';
-import { SEAT_COLOUR_NAME, shareInvite, type InviteResult } from '@/share';
+import { useSeatName } from '@/game/use-seat-name';
+import { shareInvite, type InviteResult } from '@/share';
 import { CTA, WRAP } from '@/share/site-chrome';
 
 const LEVELS: (AiLevel | null)[] = [null, 'easy', 'medium', 'hard'];
@@ -107,18 +109,20 @@ function Invite({ code }: { code: string }) {
 
 function SeatRow({
   info,
+  board,
   mine,
   isHost,
   send,
 }: {
   info: SeatInfo;
+  board: BoardId;
   mine: boolean;
   isHost: boolean;
   send: (m: ClientMessage) => void;
 }) {
   const t = useT('room');
   const seat: Seat = info.seat;
-  const colour = t(`colour.${SEAT_COLOUR_NAME[seat]}`);
+  const colour = useSeatName(board)(seat);
   const who =
     info.kind === 'human'
       ? `${info.name}${mine ? ` (${t('seat.you')})` : ''}`
@@ -218,7 +222,14 @@ export function Lobby({
         <h2 className="mt-6 font-display text-lg font-extrabold">{t('lobby.seats')}</h2>
         <ul className="mt-3 flex flex-col gap-3">
           {seats.map((s) => (
-            <SeatRow key={s.seat} info={s} mine={you.seat === s.seat} isHost={isHost} send={send} />
+            <SeatRow
+              key={s.seat}
+              info={s}
+              board={board.id}
+              mine={you.seat === s.seat}
+              isHost={isHost}
+              send={send}
+            />
           ))}
         </ul>
         <LookPicker value={room.look ?? DEFAULT_LOOK} onChange={onLook} className="mt-6" />

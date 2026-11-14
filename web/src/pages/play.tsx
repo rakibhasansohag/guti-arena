@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { askAi } from '@/game/ask-ai';
 import { useNum } from '@/game/use-num';
+import { useSeatName } from '@/game/use-seat-name';
 import {
   BoardPicker,
   GameBoard,
@@ -32,7 +33,7 @@ import {
 } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { SEAT_COLOUR_NAME, Seo } from '@/share';
+import { Seo } from '@/share';
 import { CTA, WRAP } from '@/share/site-chrome';
 
 type Kind = 'human' | AiLevel;
@@ -156,6 +157,7 @@ function SetupCard({
   onStart: () => void;
 }) {
   const t = useT('game');
+  const seatName = useSeatName(setup.board);
   return (
     <section className={cn(WRAP, 'py-6 sm:py-10')}>
       <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-4xl 3xl:text-5xl">
@@ -172,11 +174,11 @@ function SetupCard({
             <li key={seat} className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <span className="flex w-36 items-center gap-2 font-display font-extrabold">
                 <SeatPip seat={seat} />
-                {t(`colour.${SEAT_COLOUR_NAME[seat]}`)}
+                {seatName(seat)}
               </span>
               <div
                 role="group"
-                aria-label={t('setup.seatKind', { colour: t(`colour.${SEAT_COLOUR_NAME[seat]}`) })}
+                aria-label={t('setup.seatKind', { colour: seatName(seat) })}
                 className="flex flex-1 gap-1 rounded-full bg-chalk/70 p-1"
               >
                 {KINDS.map((k) => (
@@ -225,7 +227,8 @@ function EndCard({
   const num = useNum();
   const counts = countPieces(state);
   const w = state.winner;
-  const name = (s: Seat) => seatInfo[s]?.name || t(`colour.${SEAT_COLOUR_NAME[s]}`);
+  const seatName = useSeatName(state.board);
+  const name = (s: Seat) => seatInfo[s]?.name || seatName(s);
   const title =
     w === 'draw' || w === null
       ? t('end.draw')

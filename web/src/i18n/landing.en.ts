@@ -28,8 +28,9 @@ export default {
 
   // How it works
   'how.title': 'Three steps to a game',
-  'how.1.title': 'Pick 2 to 4 seats',
-  'how.1.body': 'Give each colour to a friend or to the computer, on one phone or online.',
+  'how.1.title': 'Pick a game for 2, 3 or 4',
+  'how.1.body':
+    'Sholo Guti for two, a hexagon for three, four colours for four. Give each seat to a friend or to the computer.',
   'how.2.title': 'Step or jump',
   'how.2.body': 'Move one point along a line, or jump over a rival piece to take it off the board.',
   'how.3.title': 'Keep the last colour',
@@ -49,9 +50,9 @@ export default {
 
   // Features
   'features.title': 'Seats, computer players and open code',
-  'features.seats.title': 'Seats for 2 to 4 players',
+  'features.seats.title': 'Games for 2, 3 and 4 players',
   'features.seats.body':
-    'Two face each other across the board; three or four play from every side.',
+    'Six games on one site: Sholo Guti, Quick, Lau kata kati and Bagh-chal for two, Three corners for three, Four colours for four.',
   'features.ai.title': 'Computer players at three levels',
   'features.ai.body':
     'Easy, medium and hard. Online, the computer also takes over a seat when someone leaves.',
@@ -126,4 +127,7 @@ export default {
   'share.room': 'Room {code}',
   'share.save': 'Save image',
   'share.share': 'Share image',
+  'rules.games.title': 'The games',
+  'rules.games.body':
+    'Every game uses the same two moves: step to the next point, or jump a rival piece to take it. Only the board and the number of players change. The diagrams below show the four-colour board.',
 } satisfies Dict;

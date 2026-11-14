@@ -11,8 +11,12 @@ import {
 import { AnimatePresence, MotionConfig, motion, type Transition } from 'motion/react';
 import { Bot } from 'lucide-react';
 import {
+  BAGH_GOATS_TO_WIN,
+  GOAT,
+  HAND,
   boardOf,
   countPieces,
+  goatsTaken,
   legalMoves,
   type GameState,
   type Move,
@@ -28,6 +32,7 @@ import { SEAT_COLOUR_NAME } from '@/share/seat-colours';
 import { BoardBase } from './board-base.tsx';
 import { positions, turnsFor, viewOf, type Pos } from './board-view.ts';
 import { COURT, shadeOf, useLook } from './look.ts';
+import { useSeatName } from './use-seat-name.ts';
 import { play } from './sound.ts';
 import { track, type Tracked } from './track.ts';
 import { useNum } from './use-num.ts';
@@ -109,8 +114,12 @@ export function GameBoard({
     prevTurn.current = state.turn;
   }, [state.turn, state.winner, myTurn, mySeat, seats]);
 
+  const placing = legal[0]?.from === HAND;
+
   function tap(id: PointId) {
-    const move = targets.find((m) => m.to === id);
+    // A goat from the hand (Bagh-chal) goes straight onto the tapped point.
+    const move =
+      targets.find((m) => m.to === id) ?? (placing ? legal.find((m) => m.to === id) : undefined);
     if (move) {
       onMove(move);
       setSel(null);
@@ -182,12 +191,23 @@ export function GameBoard({
   }
 
   const counts = countPieces(state);
-  const name = (s: Seat) => seats[s]?.name || t(`colour.${SEAT_COLOUR_NAME[s]}`);
+  const seatName = useSeatName(state.board);
+  const name = (s: Seat) => seats[s]?.name || seatName(s);
+  const bagh = state.board === 'bagh';
+  /** The line under a seat's name: its pieces, or in Bagh-chal the goats placed and taken. */
+  const note = (s: Seat) =>
+    bagh && s === GOAT
+      ? t('bagh.goatNote', { hand: num(state.inHand ?? 0), taken: num(goatsTaken(state)) })
+      : bagh
+        ? t('bagh.tigerNote', { taken: num(goatsTaken(state)), goal: num(BAGH_GOATS_TO_WIN) })
+        : counts[s] === 0
+          ? t('badge.out')
+          : t(counts[s] === 1 ? 'badge.onePiece' : 'badge.pieces', { n: num(counts[s]) });
   const status =
     state.winner !== null
       ? ''
       : myTurn
-        ? t(state.chainFrom ? 'status.chain' : 'status.yourTurn')
+        ? t(state.chainFrom ? 'status.chain' : placing ? 'status.place' : 'status.yourTurn')
         : seats[state.turn]?.kind === 'ai'
           ? t('status.thinking', { name: name(state.turn) })
           : t('status.turn', { name: name(state.turn) });
@@ -204,7 +224,8 @@ export function GameBoard({
               seat={s}
               info={seats[s]}
               name={name(s)}
-              count={counts[s]}
+              note={note(s)}
+              out={!bagh && counts[s] === 0}
               active={state.winner === null && state.turn === s}
               deadline={state.turn === s ? turnDeadline : null}
             />
@@ -404,21 +425,21 @@ function SeatPanel({
   seat,
   info,
   name,
-  count,
+  note,
+  out,
   active,
   deadline,
 }: {
   seat: Seat;
   info: SeatInfo | undefined;
   name: string;
-  count: number;
+  note: string;
+  out: boolean;
   active: boolean;
   deadline: number | null;
 }) {
   const t = useT('game');
-  const num = useNum();
   const pieces = useLook().pieces;
-  const out = count === 0;
   return (
     <div
       className={cn(
@@ -452,11 +473,7 @@ function SeatPanel({
             </span>
           )}
         </span>
-        <span className="block truncate text-xs sm:text-sm">
-          {out
-            ? t('badge.out')
-            : t(count === 1 ? 'badge.onePiece' : 'badge.pieces', { n: num(count) })}
-        </span>
+        <span className="block truncate text-xs sm:text-sm">{note}</span>
       </span>
     </div>
   );

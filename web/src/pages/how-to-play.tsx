@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { startPoints, type PointId, type Seat } from '@guti-arena/engine';
+import { BOARD_IDS, startPoints, type PointId, type Seat } from '@guti-arena/engine';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -65,6 +65,7 @@ const CARD = 'rounded-clay bg-card p-6 shadow-clay 3xl:p-8';
 
 export default function HowToPlay() {
   const t = useT('landing');
+  const g = useT('game');
   return (
     <>
       <Seo
@@ -116,6 +117,24 @@ export default function HowToPlay() {
             label={t('rules.board.diagram')}
             className="mx-auto aspect-square w-full max-w-[min(100%,70svh)]"
           />
+        </section>
+
+        <section aria-labelledby="games-title" className="flex flex-col gap-5">
+          <h2 id="games-title" className={H2}>
+            {t('rules.games.title')}
+          </h2>
+          <p className="max-w-3xl">{t('rules.games.body')}</p>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {BOARD_IDS.map((id) => (
+              <li key={id} className={cn(CARD, 'flex flex-col gap-2')}>
+                <h3 className="font-display text-xl font-extrabold">{g(`boards.${id}`)}</h3>
+                <p className="font-display font-extrabold text-clay-deep">
+                  {g(`boards.${id}.tag`)}
+                </p>
+                <p>{g(`boards.${id}.hint`)}</p>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <div className="grid gap-6 md:grid-cols-2">

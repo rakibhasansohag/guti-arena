@@ -1,5 +1,14 @@
 import { BOARDS, boardOf, type Board } from './board.ts';
-import { applyLegalMove, countPieces, endChain, jumpedPoint, legalMoves } from './rules.ts';
+import {
+  GOAT,
+  TIGER,
+  applyLegalMove,
+  countPieces,
+  endChain,
+  goatsTaken,
+  jumpedPoint,
+  legalMoves,
+} from './rules.ts';
 import type { AiLevel, BoardId, GameState, Move, PointId, Seat } from './types.ts';
 
 type Choice = Move | 'end-chain';
@@ -26,6 +35,7 @@ export function chooseMove(s: GameState, level: AiLevel, opts: AiOptions = {}): 
     throw new Error('no legal move');
   }
   const isJump = (m: Move) => jumpedPoint(m, boardOf(s)) !== null;
+  if (boardOf(s).id === 'bagh' && level !== 'easy') return bagh(s, moves, level === 'hard' ? 4 : 2);
   if (level === 'easy') {
     const captures = moves.filter(isJump);
     return pick(captures.length > 0 ? captures : moves);
@@ -33,6 +43,47 @@ export function chooseMove(s: GameState, level: AiLevel, opts: AiOptions = {}): 
   const tables = TABLES[boardOf(s).id];
   if (level === 'medium') return medium(s, moves, tables);
   return hard(s, moves, tables, opts.nodeBudget ?? HARD_NODE_BUDGET);
+}
+
+/** How good a Bagh-chal position is for the tigers: goats taken, then tigers that can still move. */
+function baghScore(s: GameState): number {
+  if (s.winner !== null) return s.winner === TIGER ? WIN : s.winner === GOAT ? -WIN : 0;
+  const board = boardOf(s);
+  let free = 0;
+  for (const p in s.pieces) {
+    if (s.pieces[p] !== TIGER) continue;
+    if (board.neighbours[p]!.some((n) => s.pieces[n] === undefined)) free++;
+    else if (board.jumps[p]!.some((j) => s.pieces[j.over] === GOAT && s.pieces[j.to] === undefined))
+      free++;
+  }
+  return goatsTaken(s) * 1000 + free * 120;
+}
+
+/** Plain alpha-beta `depth` plies deep; tigers maximise. Ties are broken at random. */
+function bagh(s: GameState, moves: Move[], depth: number): Move {
+  const search = (st: GameState, d: number, alpha: number, beta: number): number => {
+    if (d === 0 || st.winner !== null)
+      return baghScore(st) + (st.winner === null ? 0 : d * Math.sign(baghScore(st)));
+    const max = st.turn === TIGER;
+    let best = max ? -Infinity : Infinity;
+    for (const m of legalMoves(st)) {
+      const v = search(applyLegalMove(st, m), d - 1, alpha, beta);
+      if (max ? v > best : v < best) best = v;
+      if (max) alpha = Math.max(alpha, v);
+      else beta = Math.min(beta, v);
+      if (alpha >= beta) break;
+    }
+    return best;
+  };
+  const sign = s.turn === TIGER ? 1 : -1;
+  let best: Move[] = [];
+  let bestV = -Infinity;
+  for (const m of moves) {
+    const v = sign * search(applyLegalMove(s, m), depth - 1, -Infinity, Infinity);
+    if (v > bestV) [best, bestV] = [[m], v];
+    else if (v === bestV) best.push(m);
+  }
+  return pick(best);
 }
 
 /** Index-based board tables shared by medium's exposure count and hard's search. */

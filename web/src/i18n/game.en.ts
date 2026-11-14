@@ -33,6 +33,15 @@ export default {
   'boards.lau.tag': '2 players · 9 pieces each',
   'boards.lau.hint':
     'A small Bengal game: two triangles joined at the point. Fast to learn and over in minutes.',
+  'boards.bagh': 'Bagh-chal',
+  'boards.bagh.tag': '2 players · 4 tigers, 20 goats',
+  'boards.bagh.hint':
+    'Tigers and goats. The goat player places one goat a turn, then moves them; goats never capture. Tigers jump goats to take them. Tigers win with 5 goats taken; goats win by shutting every tiger in.',
+  'bagh.tigers': 'Tigers',
+  'bagh.goats': 'Goats',
+  'bagh.goatNote': '{hand} to place · {taken} lost',
+  'bagh.tigerNote': '{taken} of {goal} goats taken',
+  'status.place': 'Your turn: place a goat on an empty point',
   'boards.quick': 'Quick',
   'boards.quick.hint': 'A short game on the 5 by 5 grid with diagonals, without the triangles.',
   'setup.seats': 'Seats',

@@ -1,5 +1,5 @@
 import { BOARDS, boardOf, type Board } from './board.ts';
-import type { BoardId, GameState, Move, PointId, Seat } from './types.ts';
+import { HAND, type BoardId, type GameState, type Move, type PointId, type Seat } from './types.ts';
 
 /** Quiet rounds (no capture) after which the game ends on piece count. */
 export const QUIET_ROUND_LIMIT = 40;
@@ -53,6 +53,50 @@ function winnerByCount(s: GameState): Seat | 'draw' {
   return leaders.length === 1 ? leaders[0]! : 'draw';
 }
 
+// ---- Bagh-chal: four tigers (seat 0) hunt twenty goats (seat 2). ----
+
+export const TIGER: Seat = 0;
+export const GOAT: Seat = 2;
+export const BAGH_GOATS = 20;
+/** Tigers win when they have taken this many goats. */
+export const BAGH_GOATS_TO_WIN = 5;
+
+/** Goats the tigers have taken so far. */
+export function goatsTaken(s: GameState): number {
+  return BAGH_GOATS - (s.inHand ?? 0) - countPieces(s)[GOAT];
+}
+
+/** Goats are placed one a turn, then step; they never capture. Tigers step or jump one goat. */
+function baghMoves(s: GameState): Move[] {
+  const board = boardOf(s);
+  if (s.turn === TIGER) return movesFor(board, s.pieces, TIGER);
+  if ((s.inHand ?? 0) > 0) {
+    return board.points
+      .filter((p) => s.pieces[p.id] === undefined)
+      .map((p) => ({ from: HAND, to: p.id }));
+  }
+  return movesFor(board, s.pieces, GOAT).filter((m) => jumpedPoint(m, board) === null);
+}
+
+function baghApply(s: GameState, m: Move): GameState {
+  const next: GameState = { ...s, seats: [...s.seats], pieces: { ...s.pieces } };
+  next.pieces[m.to] = s.turn;
+  if (m.from === HAND) next.inHand = (s.inHand ?? 0) - 1;
+  else delete next.pieces[m.from];
+  const over = jumpedPoint(m, boardOf(s));
+  if (over !== null) delete next.pieces[over];
+
+  // Only quiet rounds after the last goat is placed count toward a draw.
+  if (over !== null || m.from === HAND) next.quietRounds = 0;
+  else if (s.turn === TIGER) next.quietRounds++;
+  next.turn = s.turn === TIGER ? GOAT : TIGER;
+  if (goatsTaken(next) >= BAGH_GOATS_TO_WIN) next.winner = TIGER;
+  else if (baghMoves(next).length === 0)
+    next.winner = s.turn; // the side to move is shut in
+  else if (next.quietRounds >= QUIET_ROUND_LIMIT) next.winner = 'draw';
+  return next;
+}
+
 /** A new game on `board`. Every seat must be one the board has; two-player boards use seats 0 and 2. */
 export function createGame(seats: Seat[], board: BoardId = 'four'): GameState {
   const inPlay = [...new Set(seats)].sort((a, b) => a - b);
@@ -63,7 +107,7 @@ export function createGame(seats: Seat[], board: BoardId = 'four'): GameState {
   if (!inPlay.every((seat) => b.seats.includes(seat))) throw new Error('seat not on this board');
   const pieces: Record<PointId, Seat> = {};
   for (const seat of inPlay) for (const p of b.start[seat]) pieces[p] = seat;
-  return {
+  const s: GameState = {
     board,
     seats: inPlay,
     pieces,
@@ -72,11 +116,14 @@ export function createGame(seats: Seat[], board: BoardId = 'four'): GameState {
     quietRounds: 0,
     winner: null,
   };
+  // The goats move first.
+  return board === 'bagh' ? { ...s, turn: GOAT, inHand: BAGH_GOATS } : s;
 }
 
 export function legalMoves(s: GameState): Move[] {
   if (s.winner !== null) return [];
   const board = boardOf(s);
+  if (board.id === 'bagh') return baghMoves(s);
   if (s.chainFrom !== null) return jumpsFrom(board, s.pieces, s.chainFrom, s.turn);
   return movesFor(board, s.pieces, s.turn);
 }
@@ -116,6 +163,7 @@ export function applyMove(s: GameState, m: Move): GameState {
 
 /** `applyMove` without the legality check, for search over moves that came from `legalMoves`. */
 export function applyLegalMove(s: GameState, m: Move): GameState {
+  if (s.board === 'bagh') return baghApply(s, m);
   const next: GameState = { ...s, seats: [...s.seats], pieces: { ...s.pieces } };
   next.pieces[m.to] = s.turn;
   delete next.pieces[m.from];

@@ -209,6 +209,20 @@ describe('boards', () => {
     expect(view(r).board).toBe('quick');
   });
 
+  it('plays Bagh-chal in a room: a goat from the hand, then the AI tigers', () => {
+    const r = newRoom('BCDFG');
+    handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
+    handle(r, 'a', { t: 'set-board', board: 'bagh' }, T0);
+    handle(r, 'a', { t: 'sit', seat: 2 }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 0, level: 'medium' }, T0);
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
+    expect(r.game).toMatchObject({ turn: 2, inHand: 20 });
+    expect(handle(r, 'a', { t: 'move', from: 'hand', to: 'g-2-2' }, T0)).toBeNull();
+    expect(r.game).toMatchObject({ turn: 0, inHand: 19 });
+    expect(tick(r, botDueAt(r)!)).toBe(true);
+    expect(r.game!.turn).toBe(2);
+  });
+
   it('treats rooms saved before boards existed as the four-colour board', () => {
     const r = lobby();
     delete r.board;

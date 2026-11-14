@@ -182,3 +182,73 @@ it('turns the three-player start a third of a turn onto itself', () => {
     expect(board.start[1]).toContain(hit.id);
   }
 });
+
+describe('bagh-chal', () => {
+  const play = (s: GameState, from: PointId, to: PointId) => applyMove(s, { from, to });
+
+  it('starts with four tigers, twenty goats in hand and the goats to move', () => {
+    const s = createGame([0, 2], 'bagh');
+    expect(Object.values(s.pieces)).toEqual([0, 0, 0, 0]);
+    expect(s).toMatchObject({ turn: 2, inHand: 20 });
+    expect(legalMoves(s)).toHaveLength(21);
+    expect(legalMoves(s).every((m) => m.from === 'hand')).toBe(true);
+  });
+
+  it('lets only tigers capture, one goat a jump, and tigers win on the fifth', () => {
+    let s = play(createGame([0, 2], 'bagh'), 'hand', 'g-1-1');
+    expect(s).toMatchObject({ turn: 0, inHand: 19 });
+    s = play(s, 'g-0-0', 'g-2-2');
+    expect(s.pieces['g-1-1']).toBeUndefined();
+    expect(s.chainFrom).toBeNull();
+    expect(s.turn).toBe(2);
+    // Goats may not move while any are in hand, and never jump.
+    expect(() => play({ ...s, pieces: { ...s.pieces, 'g-3-3': 2 } }, 'g-3-3', 'g-3-2')).toThrow(
+      'illegal move',
+    );
+    const last = {
+      ...s,
+      inHand: 0,
+      turn: 0 as Seat,
+      pieces: { 'g-0-0': 0 as Seat, 'g-1-1': 2 as Seat },
+    };
+    // 20 goats, none in hand, one on the board: 19 taken already.
+    expect(play(last, 'g-0-0', 'g-2-2').winner).toBe(0);
+  });
+
+  it('gives the goats the win when no tiger can move', () => {
+    const pieces: Record<PointId, Seat> = {
+      'g-0-0': 0,
+      'g-0-1': 2,
+      'g-1-0': 2,
+      'g-1-1': 2,
+      'g-0-2': 2,
+      'g-2-0': 2,
+    };
+    const s: GameState = {
+      board: 'bagh',
+      seats: [0, 2],
+      pieces,
+      turn: 2,
+      chainFrom: null,
+      quietRounds: 0,
+      winner: null,
+      inHand: 15,
+    };
+    expect(play(s, 'hand', 'g-2-2').winner).toBe(2);
+  });
+
+  it.each(['easy', 'medium', 'hard'] as const)(
+    'plays full %s AI games to the end',
+    (level) => {
+      for (let i = 0; i < 3; i++) {
+        let s = createGame([0, 2], 'bagh');
+        for (let ply = 0; s.winner === null; ply++) {
+          if (ply > 5000) throw new Error('game did not finish');
+          s = applyMove(s, chooseMove(s, level) as { from: PointId; to: PointId });
+        }
+        expect(s.winner).not.toBeNull();
+      }
+    },
+    120_000,
+  );
+});

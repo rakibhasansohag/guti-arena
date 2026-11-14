@@ -1,0 +1,194 @@
+import { legalMoves, type ClientMessage } from '@guti-arena/engine';
+import { describe, expect, it } from 'vitest';
+import {
+  AI_DELAY_MS,
+  COVER_AFTER_MS,
+  TURN_MS,
+  botDueAt,
+  cleanName,
+  disconnect,
+  handle,
+  newRoom,
+  parseMessage,
+  randomCode,
+  CODE_RE,
+  tick,
+  view,
+} from '../src/room-logic.ts';
+
+const T0 = 1_000_000;
+
+/** A lobby with host `a` at seat 0 and `b` at seat 2. */
+function lobby() {
+  const r = newRoom('BCDFG');
+  const ok = (id: string, m: ClientMessage) => expect(handle(r, id, m, T0)).toBeNull();
+  ok('a', { t: 'join', playerId: 'a', name: 'Ana' });
+  ok('b', { t: 'join', playerId: 'b', name: 'Bo' });
+  ok('a', { t: 'sit', seat: 0 });
+  ok('b', { t: 'sit', seat: 2 });
+  return r;
+}
+
+function playing() {
+  const r = lobby();
+  expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
+  return r;
+}
+
+describe('lobby', () => {
+  it('makes the first joiner host and shows seats', () => {
+    const r = lobby();
+    expect(r.hostId).toBe('a');
+    const seats = view(r).seats;
+    expect(seats).toHaveLength(4);
+    expect(seats[0]).toMatchObject({ kind: 'human', name: 'Ana', connected: true });
+    expect(seats[1]).toMatchObject({ kind: 'empty' });
+  });
+
+  it('rejects messages before join and taken seats', () => {
+    const r = lobby();
+    expect(handle(r, null, { t: 'sit', seat: 1 }, T0)).toBe('not-joined');
+    expect(handle(r, 'b', { t: 'sit', seat: 0 }, T0)).toBe('seat-taken');
+    expect(handle(r, 'a', { t: 'set-ai', seat: 2, level: 'easy' }, T0)).toBe('seat-taken');
+  });
+
+  it('lets a player move seats and stand', () => {
+    const r = lobby();
+    expect(handle(r, 'b', { t: 'sit', seat: 3 }, T0)).toBeNull();
+    expect(view(r).seats[2]!.kind).toBe('empty');
+    expect(handle(r, 'b', { t: 'stand' }, T0)).toBeNull();
+    expect(view(r).seats[3]!.kind).toBe('empty');
+  });
+
+  it('only the host sets AI and starts, with at least two seats', () => {
+    const r = newRoom('BCDFG');
+    handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
+    handle(r, 'b', { t: 'join', playerId: 'b', name: 'B' }, T0);
+    expect(handle(r, 'b', { t: 'set-ai', seat: 1, level: 'hard' }, T0)).toBe('not-host');
+    handle(r, 'a', { t: 'sit', seat: 0 }, T0);
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBe('need-two-seats');
+    expect(handle(r, 'a', { t: 'set-ai', seat: 1, level: 'hard' }, T0)).toBeNull();
+    expect(handle(r, 'b', { t: 'sit', seat: 1 }, T0)).toBe('seat-taken');
+    expect(handle(r, 'b', { t: 'start' }, T0)).toBe('not-host');
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
+    expect(r.game?.seats).toEqual([0, 1]);
+    expect(r.turnDeadline).toBe(T0 + TURN_MS);
+  });
+
+  it('passes the host on and restores the seat on rejoin', () => {
+    const r = lobby();
+    disconnect(r, 'a', T0);
+    expect(r.hostId).toBe('b');
+    expect(view(r).seats[0]).toMatchObject({ kind: 'human', connected: false });
+    expect(handle(r, 'a', { t: 'join', playerId: 'a', name: 'Ana' }, T0)).toBeNull();
+    expect(view(r).seats[0]).toMatchObject({ kind: 'human', connected: true });
+    expect(r.hostId).toBe('b');
+  });
+});
+
+describe('playing', () => {
+  it('enforces turns and rejects illegal moves', () => {
+    const r = playing();
+    const g = r.game!;
+    expect(g.turn).toBe(0);
+    const legal = legalMoves(g)[0]!;
+    expect(handle(r, 'b', { t: 'move', ...legal }, T0)).toBe('not-your-turn');
+    expect(handle(r, 'a', { t: 'move', from: 'g-0-0', to: 'g-6-6' }, T0)).toBe('illegal-move');
+    expect(handle(r, 'a', { t: 'end-chain' }, T0)).toBe('illegal-move');
+    expect(handle(r, 'a', { t: 'sit', seat: 1 }, T0)).toBe('not-lobby');
+    expect(handle(r, 'a', { t: 'move', ...legal }, T0 + 5)).toBeNull();
+    expect(r.game!.turn).toBe(2);
+    expect(r.turnDeadline).toBe(T0 + 5 + TURN_MS);
+  });
+
+  it('plays a medium move for a seat that times out', () => {
+    const r = playing();
+    expect(botDueAt(r)).toBe(T0 + TURN_MS);
+    expect(tick(r, T0 + TURN_MS - 1)).toBe(false);
+    expect(tick(r, T0 + TURN_MS)).toBe(true);
+    expect(r.game!.turn).toBe(2);
+  });
+
+  it('plays AI seats after a short delay', () => {
+    const r = newRoom('BCDFG');
+    handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
+    handle(r, 'a', { t: 'sit', seat: 2 }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 0, level: 'easy' }, T0);
+    handle(r, 'a', { t: 'start' }, T0);
+    expect(r.game!.turn).toBe(0);
+    expect(botDueAt(r)).toBe(T0 + AI_DELAY_MS);
+    expect(tick(r, T0 + AI_DELAY_MS)).toBe(true);
+    expect(r.game!.turn).toBe(2);
+  });
+
+  it('covers a disconnected player after 20 seconds until they rejoin', () => {
+    const r = playing();
+    disconnect(r, 'a', T0 + 1000);
+    expect(botDueAt(r)).toBe(T0 + 1000 + COVER_AFTER_MS);
+    expect(tick(r, T0 + 1000 + COVER_AFTER_MS)).toBe(true);
+    // b moves; a is still away, so the AI plays a's next turn after the short delay.
+    const now = T0 + 30_000;
+    expect(handle(r, 'b', { t: 'move', ...legalMoves(r.game!)[0]! }, now)).toBeNull();
+    expect(botDueAt(r)).toBe(now + AI_DELAY_MS);
+    // a comes back: the turn waits for them again.
+    handle(r, 'a', { t: 'join', playerId: 'a', name: 'Ana' }, now + 100);
+    expect(botDueAt(r)).toBe(now + TURN_MS);
+  });
+
+  it('pauses when nobody is connected', () => {
+    const r = playing();
+    disconnect(r, 'a', T0);
+    disconnect(r, 'b', T0);
+    expect(botDueAt(r)).toBeNull();
+  });
+
+  it('runs a whole AI game to the end, then rematch resets to the lobby', () => {
+    const r = newRoom('BCDFG');
+    handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 0, level: 'easy' }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 2, level: 'easy' }, T0);
+    expect(handle(r, 'a', { t: 'rematch' }, T0)).toBe('not-ended');
+    handle(r, 'a', { t: 'start' }, T0);
+    let now = T0;
+    for (let i = 0; i < 5000 && r.phase === 'playing'; i++) {
+      now = botDueAt(r)!;
+      tick(r, now);
+    }
+    expect(r.phase).toBe('ended');
+    expect(r.game!.winner).not.toBeNull();
+    expect(r.turnDeadline).toBeNull();
+    expect(handle(r, 'a', { t: 'rematch' }, now)).toBeNull();
+    expect(r.phase).toBe('lobby');
+    expect(r.game).toBeNull();
+    expect(r.ai).toEqual(['easy', null, 'easy', null]);
+  });
+});
+
+describe('input', () => {
+  it('parses only well-formed messages', () => {
+    expect(parseMessage('{"t":"sit","seat":2}')).toEqual({ t: 'sit', seat: 2 });
+    expect(parseMessage('{"t":"sit","seat":4}')).toBeNull();
+    expect(parseMessage('{"t":"set-ai","seat":1,"level":"godlike"}')).toBeNull();
+    expect(parseMessage('{"t":"set-ai","seat":1,"level":null}')).toEqual({
+      t: 'set-ai',
+      seat: 1,
+      level: null,
+    });
+    expect(parseMessage('{"t":"join","playerId":"","name":"x"}')).toBeNull();
+    expect(parseMessage('{"t":"stand","extra":1}')).toEqual({ t: 'stand' });
+    expect(parseMessage('null')).toBeNull();
+    expect(parseMessage('nope')).toBeNull();
+  });
+
+  it('cleans names', () => {
+    expect(cleanName('  Ana\u0000‮  ')).toBe('Ana');
+    expect(cleanName('x'.repeat(40))).toHaveLength(20);
+    expect(cleanName('\n\t')).toBe('Player');
+    // ZWNJ survives: Bangla spelling needs it.
+    expect(cleanName('র‌য')).toBe('র‌য');
+  });
+
+  it('makes 5-letter codes with no vowels', () => {
+    for (let i = 0; i < 50; i++) expect(randomCode()).toMatch(CODE_RE);
+  });
+});

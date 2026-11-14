@@ -8,12 +8,13 @@ export interface View {
   h: number;
 }
 
-/** Quarter turns clockwise that bring `bottom` to the south edge. */
-export const turnsFor = (bottom: Seat | null) => (bottom === null ? 0 : (2 - bottom + 4) % 4);
+/** Quarter turns clockwise that bring `bottom` to the south edge; none on a board drawn one way up. */
+export const turnsFor = (board: Board, bottom: Seat | null) =>
+  bottom === null || board.fixed ? 0 : (2 - bottom + 4) % 4;
 
 /** Board positions with `bottom` turned to the south edge. */
 export function positions(board: Board, bottom: Seat | null): Pos {
-  const turns = turnsFor(bottom);
+  const turns = turnsFor(board, bottom);
   const pos: Pos = {};
   for (const p of board.points) {
     let [x, y] = [p.x, p.y];

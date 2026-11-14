@@ -1,8 +1,11 @@
 export type Seat = 0 | 1 | 2 | 3; // north blue, east yellow, south white, west red (clockwise)
 export type PointId = string; // "g-r-c" for grid, "t-<n|e|s|w>-<m|b>-<0|1|2>" for triangle points
 
-/** Which board a game is played on: 'four' is the four-colour board, the others are two-player. */
-export type BoardId = 'four' | 'classic' | 'quick';
+/**
+ * Which board a game is played on: 'four' is the four-colour board, 'three' the three-player
+ * hexagon, the others are two-player.
+ */
+export type BoardId = 'four' | 'three' | 'classic' | 'quick' | 'lau';
 
 export interface Move {
   from: PointId;

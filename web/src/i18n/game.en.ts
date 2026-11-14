@@ -25,6 +25,14 @@ export default {
   'boards.classic': 'Sholo Guti',
   'boards.classic.hint':
     'The classic game: a 5 by 5 grid with diagonals and a triangle at each end. Jump a piece to take it; taking is optional.',
+  'boards.three': 'Three corners',
+  'boards.three.tag': '3 players · 12 pieces each',
+  'boards.three.hint':
+    'A Guti Arena original for three: a hexagon where every point has up to six neighbours. Each player starts on a third of the board; only the centre is empty.',
+  'boards.lau': 'Lau kata kati',
+  'boards.lau.tag': '2 players · 9 pieces each',
+  'boards.lau.hint':
+    'A small Bengal game: two triangles joined at the point. Fast to learn and over in minutes.',
   'boards.quick': 'Quick',
   'boards.quick.hint': 'A short game on the 5 by 5 grid with diagonals, without the triangles.',
   'setup.seats': 'Seats',

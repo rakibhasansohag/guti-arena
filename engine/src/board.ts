@@ -27,6 +27,8 @@ export interface Board {
   seats: Seat[];
   /** Start points per seat; empty for seats not on this board. */
   start: Record<Seat, PointId[]>;
+  /** Drawn one way up only: a quarter turn does not map this board onto itself. */
+  fixed?: boolean;
 }
 
 /** Triangle side letter per seat, clockwise from north. */
@@ -48,6 +50,7 @@ function makeBoard(
   points: Point[],
   lines: PointId[][],
   start: Record<Seat, PointId[]>,
+  fixed?: boolean,
 ): Board {
   const neighbours: Record<PointId, PointId[]> = Object.fromEntries(points.map((p) => [p.id, []]));
   const jumps: Record<PointId, Jump[]> = Object.fromEntries(points.map((p) => [p.id, []]));
@@ -65,7 +68,8 @@ function makeBoard(
   }
   const half = (size - 1) / 2;
   const seats = ALL_SEATS.filter((s) => start[s].length > 0);
-  return { id, size, centre: grid(half, half), points, lines, neighbours, jumps, seats, start };
+  const centre = grid(half, half);
+  return { id, size, centre, points, lines, neighbours, jumps, seats, start, fixed };
 }
 
 // ---- Four-colour board: 7 by 7 grid, no diagonals, a small triangle on every side. ----
@@ -208,11 +212,77 @@ function fiveBoard(id: BoardId, triangles: boolean, northStart: [number, number]
   return makeBoard(id, SIZE, points, lines, { 0: startOf(0), 1: [], 2: startOf(2), 3: [] });
 }
 
+// ---- Three players: a hexagon of 37 points on a triangular grid, 12 pieces each. ----
+
+/**
+ * A Guti Arena original (no traditional three-player guti board is recorded): every point has up
+ * to six neighbours, each player starts on a third of the hexagon and only the centre is empty.
+ * Points are named like grid points, `g-<r+3>-<q+3>` from axial (q, r), so the centre is g-3-3.
+ */
+function threeBoard(): Board {
+  const R = 3;
+  const cells: [number, number][] = [];
+  for (let r = -R; r <= R; r++) {
+    for (let q = -R; q <= R; q++) if (Math.abs(q + r) <= R) cells.push([q, r]);
+  }
+  const id = (q: number, r: number) => grid(r + R, q + R);
+  const xy = (q: number, r: number): [number, number] => [
+    R + q + r / 2,
+    R + (r * Math.sqrt(3)) / 2,
+  ];
+  const points = cells.map(([q, r]): Point => ({ id: id(q, r), x: xy(q, r)[0], y: xy(q, r)[1] }));
+
+  // One line per row in each of the three directions: constant r, constant q, constant q + r.
+  const lines: PointId[][] = [];
+  for (const key of [
+    ([, r]: [number, number]) => r,
+    ([q]: [number, number]) => q,
+    ([q, r]: [number, number]) => q + r,
+  ]) {
+    for (let k = -R; k <= R; k++) {
+      const row = cells.filter((c) => key(c) === k);
+      lines.push(row.map(([q, r]) => id(q, r)));
+    }
+  }
+
+  // Thirds of the hexagon by angle, clockwise from the top: seat 0 up, 1 lower right, 2 lower left.
+  const start: Record<Seat, PointId[]> = { 0: [], 1: [], 2: [], 3: [] };
+  for (const [q, r] of cells) {
+    if (q === 0 && r === 0) continue;
+    const [x, y] = xy(q, r);
+    const turn = (Math.atan2(y - R, x - R) / (2 * Math.PI) + 1 + 5 / 12 + 1e-9) % 1; // 0 at the upper-left ray
+    start[Math.floor(turn * 3) as Seat].push(id(q, r));
+  }
+  return makeBoard('three', 2 * R + 1, points, lines, start, true);
+}
+
+// ---- Lau kata kati (Bengal): two triangles joined at the point, 9 pieces each. ----
+
+/** 19 points: the shared centre, and three rows of three in each triangle. The centre starts empty. */
+function lauBoard(): Board {
+  const points: Point[] = [{ id: grid(3, 3), x: 3, y: 3 }];
+  const lines: PointId[][] = [];
+  for (const dir of [-1, 1]) {
+    for (let k = 1; k <= 3; k++) {
+      const row = [-k, 0, k].map((dx) => grid(3 + dir * k, 3 + dx));
+      row.forEach((id, i) => points.push({ id, x: 3 + (i - 1) * k, y: 3 + dir * k }));
+      lines.push(row);
+    }
+  }
+  // The two sides and the middle line run through the centre into the other triangle.
+  for (const dx of [-1, 0, 1]) {
+    lines.push(Array.from({ length: 7 }, (_, i) => grid(i, 3 + dx * (i - 3))));
+  }
+  const side = (dir: number) => points.filter((p) => (p.y - 3) * dir > 0).map((p) => p.id);
+  return makeBoard('lau', 7, points, lines, { 0: side(-1), 1: [], 2: side(1), 3: [] });
+}
+
 /** Grid rows 0 and 1 as [x, y]. */
 const TWO_ROWS = Array.from({ length: 10 }, (_, k): [number, number] => [k % 5, Math.floor(k / 5)]);
 
 export const BOARDS: Record<BoardId, Board> = {
   four: fourBoard(),
+  three: threeBoard(),
   // 16 each: the triangle plus the two nearest rows. The middle row starts empty.
   classic: fiveBoard('classic', true, [
     [0, -2], [2, -2], [4, -2],
@@ -221,6 +291,7 @@ export const BOARDS: Record<BoardId, Board> = {
   ]), // prettier-ignore
   // 12 each: two rows plus the two right-hand points of the middle row. The centre starts empty.
   quick: fiveBoard('quick', false, [...TWO_ROWS, [3, 2], [4, 2]]),
+  lau: lauBoard(),
 };
 
 export const BOARD_IDS = Object.keys(BOARDS) as BoardId[];

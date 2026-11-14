@@ -68,7 +68,7 @@ export function GameBoard({
   const board = boardOf(state);
   const pos = useMemo(() => positions(board, bottomSeat), [board, bottomSeat]);
   const view = useMemo(() => viewOf(pos), [pos]);
-  const turns = turnsFor(bottomSeat);
+  const turns = turnsFor(board, bottomSeat);
   const look = useLook();
   const court = COURT[look.court];
 

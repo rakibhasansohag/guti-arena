@@ -118,3 +118,67 @@ it('treats games without a board id as the four-colour board', () => {
   expect(boardOf(old).id).toBe('four');
   expect(legalMoves(old)).toEqual(legalMoves(createGame([0, 2])));
 });
+
+describe.each([
+  ['three', 37, 21, 12, [0, 1, 2]],
+  ['lau', 19, 9, 9, [0, 2]],
+] as const)('%s board', (id, points, lines, perSeat, seats) => {
+  const board = BOARDS[id];
+  const xy = at(id);
+
+  it(`has ${points} points, ${lines} straight lines and symmetric short links`, () => {
+    expect(new Set(board.points.map((p) => p.id)).size).toBe(points);
+    expect(board.lines).toHaveLength(lines);
+    for (const line of board.lines) {
+      const [p, q] = [xy[line[0]!]!, xy[line[1]!]!];
+      for (const pid of line) {
+        const r = xy[pid]!;
+        expect(Math.abs((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x))).toBeLessThan(1e-9);
+      }
+    }
+    for (const [a, list] of Object.entries(board.neighbours)) {
+      expect(new Set(list).size).toBe(list.length);
+      for (const b of list) expect(board.neighbours[b]).toContain(a);
+    }
+  });
+
+  it(`gives every seat ${perSeat} pieces and leaves only the centre empty`, () => {
+    expect(board.seats).toEqual(seats);
+    const s = createGame([...seats], id);
+    for (const seat of seats) expect(board.start[seat]).toHaveLength(perSeat);
+    expect(Object.keys(s.pieces)).toHaveLength(points - 1);
+    expect(s.pieces[board.centre]).toBeUndefined();
+    // Every seat can reach the centre, so nobody starts blocked.
+    for (const seat of seats) {
+      expect(board.neighbours[board.centre]!.some((p) => s.pieces[p] === seat)).toBe(true);
+    }
+  });
+
+  it.each(['easy', 'medium', 'hard'] as const)(
+    'plays full %s AI games to the end',
+    (level) => {
+      for (let i = 0; i < 5; i++) {
+        let s = createGame([...seats], id);
+        for (let ply = 0; s.winner === null; ply++) {
+          if (ply > 10_000) throw new Error('game did not finish');
+          const choice = chooseMove(s, level, { nodeBudget: 2000 });
+          s = choice === 'end-chain' ? endChain(s) : applyMove(s, choice);
+        }
+        expect(s.winner).not.toBeNull();
+      }
+    },
+    120_000,
+  );
+});
+
+it('turns the three-player start a third of a turn onto itself', () => {
+  const board = BOARDS.three;
+  const xy = at('three');
+  const [c, s] = [Math.cos((2 * Math.PI) / 3), Math.sin((2 * Math.PI) / 3)];
+  for (const p of board.start[0]) {
+    const [dx, dy] = [xy[p]!.x - 3, xy[p]!.y - 3];
+    const [x, y] = [3 + dx * c - dy * s, 3 + dx * s + dy * c];
+    const hit = board.points.find((q) => Math.hypot(q.x - x, q.y - y) < 1e-6)!;
+    expect(board.start[1]).toContain(hit.id);
+  }
+});

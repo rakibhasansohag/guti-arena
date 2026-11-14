@@ -6,6 +6,10 @@
   "compatibility_date": "2026-11-10",
   "observability": { "enabled": true },
   "upload_source_maps": true,
+  // One public address. workers.dev and preview URLs stay off so nothing bypasses the zone's security settings.
+  "routes": [{ "pattern": "guti.rakibhasansohag.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
   // The built client, with single-page-app fallback. Only /api/* reaches the Worker.
   "assets": {
     "directory": "../web/dist",

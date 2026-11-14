@@ -1,0 +1,19 @@
+# Cloudflare Workers static assets: https://developers.cloudflare.com/workers/static-assets/headers/
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+
+# Vite file names carry a content hash, so they never change.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Not hashed, but rarely regenerated.
+/board/*
+  Cache-Control: public, max-age=604800
+/icons/*
+  Cache-Control: public, max-age=604800
+/og/*
+  Cache-Control: public, max-age=604800

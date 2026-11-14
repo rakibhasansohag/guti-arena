@@ -16,6 +16,16 @@ export const turnsFor = (board: Board, bottom: Seat | null) =>
 export function positions(board: Board, bottom: Seat | null): Pos {
   const turns = turnsFor(board, bottom);
   const pos: Pos = {};
+  if (board.fixed && bottom !== null) {
+    // The three-player hexagon: seats sit a third of a turn apart, the first one at the top.
+    const angle = Math.PI - (board.seats.indexOf(bottom) * 2 * Math.PI) / board.seats.length;
+    const [cos, sin, c] = [Math.cos(angle), Math.sin(angle), (board.size - 1) / 2];
+    for (const p of board.points) {
+      const [dx, dy] = [p.x - c, p.y - c];
+      pos[p.id] = { x: c + dx * cos - dy * sin, y: c + dx * sin + dy * cos };
+    }
+    return pos;
+  }
   for (const p of board.points) {
     let [x, y] = [p.x, p.y];
     for (let k = 0; k < turns; k++) [x, y] = [board.size - 1 - y, x];

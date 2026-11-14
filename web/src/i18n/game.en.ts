@@ -32,7 +32,7 @@ export default {
   'boards.lau': 'Lau kata kati',
   'boards.lau.tag': '2 players · 9 pieces each',
   'boards.lau.hint':
-    'A small Bengal game: two triangles joined at the point. Fast to learn and over in minutes.',
+    'A small Bengal game: two triangles joined at the point. If you can capture you must, and a chain of jumps is played to its end.',
   'boards.bagh': 'Bagh-chal',
   'boards.bagh.tag': '2 players · 4 tigers, 20 goats',
   'boards.bagh.hint':
@@ -108,4 +108,6 @@ export default {
   'boards.classic.tag': '2 players · 16 pieces each',
   'boards.quick.tag': '2 players · 12 pieces each',
   'help.rules': 'How to play {name}',
+  'status.mustCapture': 'Your turn: you must capture',
+  'status.mustChain': 'Jump again: the chain must be finished',
 } satisfies Dict;

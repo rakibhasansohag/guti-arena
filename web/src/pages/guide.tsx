@@ -1,3 +1,4 @@
+import { Suspense, lazy, useSyncExternalStore } from 'react';
 import { Link, Navigate, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { BOARD_IDS } from '@guti-arena/engine';
@@ -13,6 +14,8 @@ import { GUIDE_SLUG, boardOfSlug, guidePath } from '@/share/guides';
 import { Seo } from '@/share/seo';
 import { CTA, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
 
+const Lesson = lazy(() => import('@/guide/lesson'));
+
 const H2 = 'font-display text-2xl font-extrabold sm:text-3xl 3xl:text-4xl';
 const CARD = 'rounded-clay bg-card p-5 shadow-clay sm:p-6 3xl:p-8';
 const LINK =
@@ -22,6 +25,12 @@ const LINK =
 export default function Guide() {
   const board = boardOfSlug(useParams().game);
   const content: GuideContent = useLang() === 'en' ? en : bn;
+  // False in the prerender and while hydrating it, true afterwards.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   if (!board) return <Navigate to="/how-to-play" replace />;
   const { ui, games } = content;
   const g = games[board];
@@ -89,6 +98,20 @@ export default function Guide() {
               );
             })}
           </ol>
+        </section>
+
+        <section aria-labelledby="lesson-title" className={cn(CARD, 'flex flex-col gap-4')}>
+          <h2 id="lesson-title" className={H2}>
+            {ui.lessonTitle}
+          </h2>
+          {/* Client only, and loaded after the page: the article above never waits for the board. */}
+          {mounted ? (
+            <Suspense fallback={<p className="text-lg">{g.lesson}</p>}>
+              <Lesson key={board} board={board} content={content} />
+            </Suspense>
+          ) : (
+            <p className="text-lg">{g.lesson}</p>
+          )}
         </section>
 
         <div className="grid gap-6 md:grid-cols-2">

@@ -120,12 +120,18 @@ export function createGame(seats: Seat[], board: BoardId = 'four'): GameState {
   return board === 'bagh' ? { ...s, turn: GOAT, inHand: BAGH_GOATS } : s;
 }
 
+/** Boards where a capture must be taken when one is open, and a chain of jumps played to its end. */
+export const mustCapture = (board: BoardId | undefined): boolean => board === 'lau';
+
 export function legalMoves(s: GameState): Move[] {
   if (s.winner !== null) return [];
   const board = boardOf(s);
   if (board.id === 'bagh') return baghMoves(s);
   if (s.chainFrom !== null) return jumpsFrom(board, s.pieces, s.chainFrom, s.turn);
-  return movesFor(board, s.pieces, s.turn);
+  const moves = movesFor(board, s.pieces, s.turn);
+  if (!mustCapture(board.id)) return moves;
+  const jumps = moves.filter((m) => jumpedPoint(m, board) !== null);
+  return jumps.length > 0 ? jumps : moves;
 }
 
 /**
@@ -193,6 +199,7 @@ export function applyLegalMove(s: GameState, m: Move): GameState {
 /** Stop a multi-jump and pass the turn. Throws when no chain is in progress. */
 export function endChain(s: GameState): GameState {
   if (s.chainFrom === null || s.winner !== null) throw new Error('no chain to end');
+  if (mustCapture(s.board)) throw new Error('the chain must be played to its end');
   const next: GameState = { ...s, seats: [...s.seats], pieces: { ...s.pieces } };
   passTurn(next);
   return next;

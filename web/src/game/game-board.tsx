@@ -17,6 +17,8 @@ import {
   boardOf,
   countPieces,
   goatsTaken,
+  jumpedPoint,
+  mustCapture,
   legalMoves,
   type BoardId,
   type GameState,
@@ -116,6 +118,7 @@ export function GameBoard({
   }, [state.turn, state.winner, myTurn, mySeat, seats]);
 
   const placing = legal[0]?.from === HAND;
+  const forced = mustCapture(state.board);
 
   function tap(id: PointId) {
     // A goat from the hand (Bagh-chal) goes straight onto the tapped point.
@@ -208,31 +211,52 @@ export function GameBoard({
     state.winner !== null
       ? ''
       : myTurn
-        ? t(state.chainFrom ? 'status.chain' : placing ? 'status.place' : 'status.yourTurn')
+        ? t(
+            state.chainFrom
+              ? forced
+                ? 'status.mustChain'
+                : 'status.chain'
+              : placing
+                ? 'status.place'
+                : forced && legal.some((m) => jumpedPoint(m, board) !== null)
+                  ? 'status.mustCapture'
+                  : 'status.yourTurn',
+          )
         : seats[state.turn]?.kind === 'ai'
           ? t('status.thinking', { name: name(state.turn) })
           : t('status.turn', { name: name(state.turn) });
 
-  // Seat panels sit outside the board: a row above (screen sides left and top) and one below.
+  // Seat panels sit outside the board: a row above and a row below. On the four-sided boards the
+  // top row holds screen sides left and top; on the hexagon you sit below, the other two above.
+  const meanX = (seat: Seat) =>
+    board.start[seat].reduce((sum, p) => sum + pos[p]!.x, 0) / board.start[seat].length;
+  const rows: Seat[][] =
+    board.fixed && bottomSeat !== null
+      ? [
+          state.seats.filter((s) => s !== bottomSeat).sort((a, b) => meanX(a) - meanX(b)),
+          [bottomSeat],
+        ]
+      : [
+          [3, 0],
+          [2, 1],
+        ].map((sides) =>
+          sides.flatMap((side) => state.seats.filter((s) => (s + turns) % 4 === side)),
+        );
   const panels = (row: 0 | 1) => (
     <div className="flex gap-2 px-2">
-      {(row === 0 ? [3, 0] : [2, 1]).flatMap((side) =>
-        state.seats
-          .filter((s) => (s + turns) % 4 === side)
-          .map((s) => (
-            <SeatPanel
-              key={s}
-              seat={s}
-              info={seats[s]}
-              name={name(s)}
-              board={state.board}
-              note={note(s)}
-              out={!bagh && counts[s] === 0}
-              active={state.winner === null && state.turn === s}
-              deadline={state.turn === s ? turnDeadline : null}
-            />
-          )),
-      )}
+      {rows[row]!.map((s) => (
+        <SeatPanel
+          key={s}
+          seat={s}
+          info={seats[s]}
+          name={name(s)}
+          board={state.board}
+          note={note(s)}
+          out={!bagh && counts[s] === 0}
+          active={state.winner === null && state.turn === s}
+          deadline={state.turn === s ? turnDeadline : null}
+        />
+      ))}
     </div>
   );
 
@@ -353,7 +377,7 @@ export function GameBoard({
           <p aria-live="polite" className="font-display text-lg font-extrabold 3xl:text-xl">
             {status}
           </p>
-          {myTurn && state.chainFrom && (
+          {myTurn && state.chainFrom && !forced && (
             <Button
               onClick={onEndChain}
               className="h-11 rounded-full px-5 font-display text-base font-extrabold shadow-clay"

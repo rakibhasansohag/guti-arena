@@ -35,7 +35,11 @@ export function chooseMove(s: GameState, level: AiLevel, opts: AiOptions = {}): 
     throw new Error('no legal move');
   }
   const isJump = (m: Move) => jumpedPoint(m, boardOf(s)) !== null;
-  if (boardOf(s).id === 'bagh' && level !== 'easy') return bagh(s, moves, level === 'hard' ? 4 : 2);
+  const id = boardOf(s).id;
+  if (level !== 'easy') {
+    if (id === 'bagh') return plain(s, moves, level === 'hard' ? 4 : 2, baghScore);
+    if (id === 'lau') return plain(s, moves, level === 'hard' ? 6 : 2, lauScore);
+  }
   if (level === 'easy') {
     const captures = moves.filter(isJump);
     return pick(captures.length > 0 ? captures : moves);
@@ -59,12 +63,23 @@ function baghScore(s: GameState): number {
   return goatsTaken(s) * 1000 + free * 120;
 }
 
-/** Plain alpha-beta `depth` plies deep; tigers maximise. Ties are broken at random. */
-function bagh(s: GameState, moves: Move[], depth: number): Move {
+/** Lau kata kati for seat 0: the difference in pieces. */
+function lauScore(s: GameState): number {
+  if (s.winner !== null) return s.winner === 0 ? WIN : s.winner === 2 ? -WIN : 0;
+  const counts = countPieces(s);
+  return (counts[0] - counts[2]) * 100;
+}
+
+/**
+ * Plain alpha-beta `depth` plies deep over the real rules, for the two-sided games whose rules
+ * the fast search below does not know. `score` rates a position for seat 0, who maximises.
+ * Ties are broken at random.
+ */
+function plain(s: GameState, moves: Move[], depth: number, score: (s: GameState) => number): Move {
   const search = (st: GameState, d: number, alpha: number, beta: number): number => {
     if (d === 0 || st.winner !== null)
-      return baghScore(st) + (st.winner === null ? 0 : d * Math.sign(baghScore(st)));
-    const max = st.turn === TIGER;
+      return score(st) + (st.winner === null ? 0 : d * Math.sign(score(st)));
+    const max = st.turn === 0;
     let best = max ? -Infinity : Infinity;
     for (const m of legalMoves(st)) {
       const v = search(applyLegalMove(st, m), d - 1, alpha, beta);
@@ -75,7 +90,7 @@ function bagh(s: GameState, moves: Move[], depth: number): Move {
     }
     return best;
   };
-  const sign = s.turn === TIGER ? 1 : -1;
+  const sign = s.turn === 0 ? 1 : -1;
   let best: Move[] = [];
   let bestV = -Infinity;
   for (const m of moves) {

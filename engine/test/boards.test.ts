@@ -252,3 +252,32 @@ describe('bagh-chal', () => {
     120_000,
   );
 });
+
+describe('lau kata kati forces captures', () => {
+  const s: GameState = {
+    board: 'lau',
+    seats: [0, 2],
+    pieces: { 'g-2-3': 0, 'g-1-1': 0, 'g-3-3': 2, 'g-5-3': 2, 'g-6-6': 2 },
+    turn: 0,
+    chainFrom: null,
+    quietRounds: 0,
+    winner: null,
+  };
+
+  it('offers only captures when one is open, and no way to stop a chain', () => {
+    expect(legalMoves(s)).toEqual([{ from: 'g-2-3', to: 'g-4-3' }]);
+    const mid = applyMove(s, { from: 'g-2-3', to: 'g-4-3' });
+    expect(mid.chainFrom).toBe('g-4-3');
+    expect(() => endChain(mid)).toThrow('must be played');
+    expect(applyMove(mid, { from: 'g-4-3', to: 'g-6-3' }).turn).toBe(2);
+  });
+
+  it('leaves capturing optional on the other boards', () => {
+    const classic: GameState = {
+      ...s,
+      board: 'classic',
+      pieces: { 'g-0-0': 0, 'g-0-1': 2, 'g-4-4': 2 },
+    };
+    expect(legalMoves(classic).length).toBeGreaterThan(1);
+  });
+});

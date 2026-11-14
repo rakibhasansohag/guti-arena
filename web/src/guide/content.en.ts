@@ -16,6 +16,11 @@ export default {
     others: 'Guides to the other games',
     all: 'All games',
     read: 'Read the guide',
+    lessonTitle: 'Try it yourself',
+    lessonDone: 'Well done!',
+    lessonMissed: 'Not quite. The capture was still open.',
+    lessonAgain: 'Try again',
+    you: 'You',
   },
   games: {
     four: {
@@ -54,6 +59,8 @@ export default {
           alt: 'Only blue pieces remain on the board',
         },
       },
+      lesson:
+        'You are blue. Take both yellow pieces in one turn: tap your piece, then the point to jump to, and jump again.',
       tips: [
         'Do not rush into the centre: the first piece there is often the first one taken.',
         'Keep pieces side by side on a line. A piece with a friend behind it cannot be jumped.',
@@ -109,6 +116,7 @@ export default {
           alt: 'Only blue pieces remain',
         },
       },
+      lesson: 'You are blue. Take the yellow piece and then the white piece in one turn.',
       tips: [
         'Two players often gang up on the leader. Staying a close second can be safer than leading early.',
         'With six directions, a lone piece is exposed from many sides. Move in pairs.',
@@ -161,6 +169,8 @@ export default {
           alt: 'Only blue pieces remain',
         },
       },
+      lesson:
+        'You are blue. Take both white pieces in one turn: one along the row, then one along the diagonal.',
       tips: [
         'The centre point touches eight lines. Holding it gives your pieces the most room.',
         'Before you step forward, check the point behind your piece. If it is empty, you can be jumped.',
@@ -216,6 +226,8 @@ export default {
           alt: 'Only blue pieces remain',
         },
       },
+      lesson:
+        'You are blue. Take both white pieces in one turn: one along the row, then one along the diagonal.',
       tips: [
         'The first move must go into the centre, and that piece can be taken at once. Make sure you can take back.',
         'Corners and edges are safer: fewer lines pass through them.',
@@ -251,7 +263,7 @@ export default {
         },
         capture: {
           title: 'Capture by jumping',
-          body: 'Jump over a rival piece next to yours to the empty point straight beyond it, and it leaves the board. Here blue jumps the piece in the centre. The same piece may keep jumping while captures are open.',
+          body: 'Jump over a rival piece next to yours to the empty point straight beyond it, and it leaves the board. Here blue jumps the piece in the centre. In this game capturing is compulsory: if you can jump you must, and the same piece keeps jumping until no capture is left.',
           alt: 'A blue piece jumps the white piece in the centre',
         },
         win: {
@@ -260,15 +272,17 @@ export default {
           alt: 'Only blue pieces remain',
         },
       },
+      lesson:
+        'You are blue. Jump the white piece in the centre, then keep jumping. Captures are compulsory here.',
       tips: [
         'Everything passes through the centre. Whoever controls it controls the crossing.',
-        'The first piece into the centre is usually lost. Plan the capture that answers it.',
+        'Captures are forced, so you can pull a rival piece where you want it: offer one piece to set up a double jump.',
         'Keep your back row full as long as you can: pieces there cannot be jumped.',
       ],
       faq: [
         {
           q: 'Is capturing compulsory?',
-          a: 'In the old recorded rules it is. On Guti Arena capturing is optional, as in the other games here.',
+          a: 'Yes. Unlike Sholo Guti, a player who can capture must, and a chain of jumps is played to its end.',
         },
         {
           q: 'What does the name mean?',
@@ -312,6 +326,8 @@ export default {
           alt: 'A tiger shut in the corner by goats, unable to move',
         },
       },
+      lesson:
+        'You are the tiger, and four goats are already eaten. Eat the fifth: tap the tiger, then the point beyond the goat.',
       tips: [
         'Goats: build from the edges. A goat on the edge with a friend beside it is hard to eat.',
         'Goats: never leave an empty point straight behind a goat that a tiger is touching.',

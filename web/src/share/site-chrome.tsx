@@ -10,7 +10,7 @@ export const WRAP = 'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 4xl:max-w-[96
 
 /** Pill call-to-action that steps up on hover and presses on click. */
 export const CTA =
-  'h-12 rounded-full px-6 text-base font-display font-extrabold shadow-clay transition-[translate,background-color,box-shadow] duration-300 ease-clay hover:-translate-y-0.5 active:translate-y-px 3xl:h-14 3xl:px-8';
+  'h-12 rounded-full px-6 text-base font-display font-extrabold shadow-clay transition-[translate,box-shadow,background-color,color] duration-[350ms,350ms,200ms,200ms] ease-clay hover:-translate-y-0.5 hover:shadow-clay-lift active:translate-y-px active:shadow-clay 3xl:h-14 3xl:px-8';
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -50,7 +50,7 @@ export function SiteHeader() {
         <LangSwitch />
         <Link
           to="/play"
-          className="hidden h-10 items-center rounded-full bg-primary px-5 font-display font-extrabold text-primary-foreground shadow-clay transition-[translate] duration-300 ease-clay hover:-translate-y-0.5 active:translate-y-px md:inline-flex"
+          className="hidden h-10 items-center rounded-full bg-primary px-5 font-display font-extrabold text-primary-foreground shadow-clay transition-[translate,box-shadow] duration-[350ms] ease-clay hover:-translate-y-0.5 hover:shadow-clay-lift active:translate-y-px active:shadow-clay md:inline-flex"
         >
           {t('cta.play')}
         </Link>

@@ -70,4 +70,29 @@
   h3 {
     @apply font-display;
   }
+  /* Tailwind v4 Preflight gives buttons the arrow; every actionable element gets the hand. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label[for],
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+  :disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+
+/* Reduced motion: hover and press keep their colour changes but never move. */
+@media (prefers-reduced-motion: reduce) {
+  :is(a, button, [role='button']):is(:hover, :active),
+  :is(a, button, [role='button']):is(:hover, :active) svg {
+    translate: none !important;
+    scale: none !important;
+  }
 }

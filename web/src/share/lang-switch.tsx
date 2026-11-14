@@ -17,7 +17,7 @@ export function LangSwitch({ className }: { className?: string }) {
           lang={l}
           aria-pressed={lang === l}
           onClick={() => setLang(l)}
-          className="rounded-full px-3 py-1 text-sm font-display font-extrabold transition-colors duration-200 ease-out hover:bg-chalk aria-pressed:bg-charcoal aria-pressed:text-chalk"
+          className="rounded-full px-3 py-1 text-sm font-display font-extrabold transition-[background-color,color,scale] duration-[200ms,200ms,300ms] ease-clay hover:bg-chalk active:scale-95 aria-pressed:bg-charcoal aria-pressed:text-chalk"
         >
           {l === 'bn' ? 'বাংলা' : 'English'}
         </button>

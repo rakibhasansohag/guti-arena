@@ -68,7 +68,10 @@ Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and ot
 
 ### Hover and press
 
-- Pill buttons (`CTA` in `web/src/share/site-chrome.tsx`) step up 2 px on hover and press down 1 px on click, over 300 ms `ease-clay`.
+- Every actionable element shows the pointer cursor (a base rule in `web/src/styles/index.css`); disabled ones show `not-allowed`. Focus shows a 2 px clay outline.
+- Buttons (`Button`) step up 2 px on hover and press down 1 px on click over 350 ms `ease-clay`; colours fade over 200 ms and icons grow to 110 %. Pill buttons (`CTA` in `web/src/share/site-chrome.tsx`) also deepen their shadow to `shadow-clay-lift` on hover.
+- FAQ triggers turn `clay-deep` on hover and the chevron nudges 2 px toward the panel.
+- Under `prefers-reduced-motion`, hover and press change colour only (a rule in `index.css` cancels the lift and icon scale).
 - Text links draw an underline from the left on hover.
 - The FAQ accordion opens and closes its height over 350 ms `ease-clay` (set with `--tw-duration` and `--tw-ease` on the accordion root).
 - No scroll-triggered reveals or parallax. The one ambient loop is the hero board's piece hopping to the centre and back every 3.2 s.

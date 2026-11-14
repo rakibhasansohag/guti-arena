@@ -21,6 +21,7 @@
 
   --radius-clay: 20px;
   --shadow-clay: 0 8px 20px rgb(43 38 34 / 0.25), inset 0 2px 0 rgb(255 255 255 / 0.35);
+  --shadow-clay-lift: 0 14px 28px rgb(43 38 34 / 0.3), inset 0 2px 0 rgb(255 255 255 / 0.35);
   --ease-clay: cubic-bezier(0.22, 1, 0.36, 1);
 
   --breakpoint-3xl: 120rem; /* 1920px */

@@ -1,7 +1,7 @@
 // Writes static HTML for the public pages so crawlers get real content.
 // Runs after `vite build` and `vite build --ssr`; see the web build script.
 import { createHash } from 'node:crypto';
-import { appendFile, readdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const web = fileURLToPath(new URL('..', import.meta.url));
@@ -32,10 +32,20 @@ template = template.replace(
 const HEAD_TAG = /<title>[\s\S]*?<\/title>|<meta [^>]*>|<link [^>]*>/g;
 
 // Cloudflare serves /how-to-play from how-to-play.html; index.html is also the SPA fallback.
+const GUIDES = [
+  'four-colours',
+  'three-corners',
+  'sholo-guti',
+  'quick-guti',
+  'lau-kata-kati',
+  'bagh-chal',
+]; // web/src/share/guides.ts
 const pages = [
   ['/', 'index.html'],
   ['/how-to-play', 'how-to-play.html'],
+  ...GUIDES.map((slug) => [`/how-to-play/${slug}`, `how-to-play/${slug}.html`]),
 ];
+await mkdir(`${web}dist/how-to-play`, { recursive: true });
 
 const scriptHashes = [];
 for (const [route, file] of pages) {

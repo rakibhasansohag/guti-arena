@@ -107,4 +107,5 @@ export default {
   'boards.four.tag': '4 players · 18 pieces each',
   'boards.classic.tag': '2 players · 16 pieces each',
   'boards.quick.tag': '2 players · 12 pieces each',
+  'help.rules': 'How to play {name}',
 } satisfies Dict;

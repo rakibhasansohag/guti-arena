@@ -73,7 +73,7 @@ function Room({ code }: { code: string }) {
     );
   return (
     <Scene look={look}>
-      <GameHeader />
+      <GameHeader help={room?.game ? (room.game.board ?? 'four') : undefined} />
       <Main>
         {connection === 'reconnecting' && (
           <p

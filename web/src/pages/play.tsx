@@ -34,6 +34,7 @@ import {
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Seo } from '@/share';
+import { boardOfSlug } from '@/share/guides';
 import { CTA, WRAP } from '@/share/site-chrome';
 
 type Kind = 'human' | AiLevel;
@@ -62,7 +63,11 @@ function apply(s: GameState, choice: Move | 'end-chain'): GameState {
 
 export default function Page() {
   const t = useT('game');
-  const [setup, setSetup] = useState<Setup>(DEFAULT_SETUP);
+  // A guide's "play now" link opens the setup on that game: /play?game=<slug>.
+  const [setup, setSetup] = useState<Setup>(() => ({
+    ...DEFAULT_SETUP,
+    board: boardOfSlug(new URLSearchParams(location.search).get('game') ?? '') ?? 'four',
+  }));
   const [state, setState] = useState<GameState | null>(null);
   const look = useSavedLook();
 
@@ -106,7 +111,7 @@ export default function Page() {
   return (
     <Scene look={look}>
       <Seo path="/play" title={t('seo.title')} description={t('seo.description')} />
-      <GameHeader />
+      <GameHeader help={state ? (state.board ?? 'four') : undefined} />
 
       <main className="flex flex-1 flex-col items-center justify-center pb-4">
         {state ? (

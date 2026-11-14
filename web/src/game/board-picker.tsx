@@ -1,5 +1,6 @@
 import { BOARD_IDS, type BoardId } from '@guti-arena/engine';
 import { useT } from '@/i18n';
+import { guidePath } from '@/share/guides';
 import { BoardPreview } from './board-base.tsx';
 import { TILE } from './look-picker.tsx';
 import { useLook } from './look.ts';
@@ -44,7 +45,17 @@ export function BoardPicker({
           {t(`boards.${value}`)} · {t(`boards.${value}.tag`)}
         </p>
       )}
-      <p className="mt-2 text-sm sm:text-base">{t(`boards.${value}.hint`)}</p>
+      <p className="mt-2 text-sm sm:text-base">
+        {t(`boards.${value}.hint`)}{' '}
+        <a
+          href={guidePath(value)}
+          target="_blank"
+          rel="noopener"
+          className="font-display font-extrabold text-clay-deep underline decoration-2 underline-offset-4 transition-colors duration-200 hover:text-charcoal"
+        >
+          {t('help.rules', { name: t(`boards.${value}`) })}
+        </a>
+      </p>
     </div>
   );
 }

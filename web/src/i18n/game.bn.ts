@@ -105,4 +105,5 @@ export default {
   'boards.four.tag': '৪ জন · প্রত্যেকের ১৮টি গুটি',
   'boards.classic.tag': '২ জন · প্রত্যেকের ১৬টি গুটি',
   'boards.quick.tag': '২ জন · প্রত্যেকের ১২টি গুটি',
+  'help.rules': '{name} খেলার নিয়ম',
 } satisfies Dict;

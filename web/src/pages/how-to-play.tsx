@@ -5,6 +5,7 @@ import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { BoardArt, SeatMark } from '@/share/board-art';
 import { SEAT_FILL } from '@/share/seat-colours';
+import { guidePath } from '@/share/guides';
 import { Seo } from '@/share/seo';
 import { CTA, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
 
@@ -132,6 +133,12 @@ export default function HowToPlay() {
                   {g(`boards.${id}.tag`)}
                 </p>
                 <p>{g(`boards.${id}.hint`)}</p>
+                <Link
+                  to={guidePath(id)}
+                  className="mt-auto self-start pt-2 font-display font-extrabold text-clay-deep underline decoration-2 underline-offset-4 transition-colors duration-200 hover:text-charcoal"
+                >
+                  {t('rules.games.read', { name: g(`boards.${id}`) })}
+                </Link>
               </li>
             ))}
           </ul>

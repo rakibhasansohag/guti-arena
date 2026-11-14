@@ -1,14 +1,19 @@
 import { Link } from 'react-router';
+import { CircleHelp } from 'lucide-react';
 import type { BoardId, Seat } from '@guti-arena/engine';
+import { Button } from '@/components/ui/button';
+import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { guidePath } from '@/share/guides';
 import { LangSwitch } from '@/share';
 import { Guti } from '@/share/guti';
 import { Logo, WRAP } from '@/share/site-chrome';
 import { useLook } from './look.ts';
 import { MuteButton } from './mute-button.tsx';
 
-/** The slim header on game pages: home link, sound and language. */
-export function GameHeader() {
+/** The slim header on game pages: home link, the rules of the game being played (`help`), sound and language. */
+export function GameHeader({ help }: { help?: BoardId }) {
+  const t = useT('game');
   return (
     <header className={cn(WRAP, 'flex items-center justify-between gap-3 py-3')}>
       <Link
@@ -19,6 +24,19 @@ export function GameHeader() {
         <span lang="en">Guti Arena</span>
       </Link>
       <div className="flex items-center gap-2">
+        {help && (
+          <Button asChild variant="ghost" size="icon-lg" className="rounded-full">
+            <a
+              href={guidePath(help)}
+              target="_blank"
+              rel="noopener"
+              aria-label={t('help.rules', { name: t(`boards.${help}`) })}
+              title={t('help.rules', { name: t(`boards.${help}`) })}
+            >
+              <CircleHelp className="size-5" />
+            </a>
+          </Button>
+        )}
         <MuteButton />
         <LangSwitch />
       </div>

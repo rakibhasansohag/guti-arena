@@ -130,4 +130,5 @@ export default {
   'rules.games.title': 'The games',
   'rules.games.body':
     'Every game uses the same two moves: step to the next point, or jump a rival piece to take it. Only the board and the number of players change. The diagrams below show the four-colour board.',
+  'rules.games.read': 'Read the {name} guide',
 } satisfies Dict;

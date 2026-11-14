@@ -31,7 +31,7 @@ export function RoomGame({
   const turn = room.seats[game.turn];
   const away = game.winner === null && turn?.kind === 'human' && !turn.connected;
   return (
-    <div className="relative w-[min(100vw,calc(100dvh-10rem))] max-w-full">
+    <div className="relative w-full">
       <GameBoard
         state={game}
         mySeat={you.seat}

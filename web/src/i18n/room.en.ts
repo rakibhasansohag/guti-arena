@@ -40,7 +40,6 @@ export default {
     'You are the host. Send the link to friends, fill empty seats with AI if you like, then start.',
   'lobby.seats': 'Seats',
   'lobby.start': 'Start game',
-  'lobby.needTwo': 'At least two seats must be filled.',
   'lobby.waitHost': 'Waiting for the host to start…',
 
   'seat.you': 'you',
@@ -86,4 +85,6 @@ export default {
   'error.bad-message': 'Something went wrong. Reload the page.',
   'error.too-big': 'That message was too long.',
   'error.rate-limit': 'Slow down a little.',
+  'lobby.needAll': 'Fill every seat with a player or an AI.',
+  'error.need-all-seats': 'Fill every seat with a player or an AI first.',
 } satisfies Dict;

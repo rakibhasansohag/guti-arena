@@ -18,12 +18,13 @@ import {
 
 const T0 = 1_000_000;
 
-/** A lobby with host `a` at seat 0 and `b` at seat 2. */
+/** A two-player (classic board) lobby with host `a` at seat 0 and `b` at seat 2. */
 function lobby() {
   const r = newRoom('BCDFG');
   const ok = (id: string, m: ClientMessage) => expect(handle(r, id, m, T0)).toBeNull();
   ok('a', { t: 'join', playerId: 'a', name: 'Ana' });
   ok('b', { t: 'join', playerId: 'b', name: 'Bo' });
+  ok('a', { t: 'set-board', board: 'classic' });
   ok('a', { t: 'sit', seat: 0 });
   ok('b', { t: 'sit', seat: 2 });
   return r;
@@ -54,24 +55,27 @@ describe('lobby', () => {
 
   it('lets a player move seats and stand', () => {
     const r = lobby();
+    handle(r, 'a', { t: 'set-board', board: 'four' }, T0);
     expect(handle(r, 'b', { t: 'sit', seat: 3 }, T0)).toBeNull();
     expect(view(r).seats[2]!.kind).toBe('empty');
     expect(handle(r, 'b', { t: 'stand' }, T0)).toBeNull();
     expect(view(r).seats[3]!.kind).toBe('empty');
   });
 
-  it('only the host sets AI and starts, with at least two seats', () => {
+  it('only the host sets AI and starts, with every seat filled', () => {
     const r = newRoom('BCDFG');
     handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
     handle(r, 'b', { t: 'join', playerId: 'b', name: 'B' }, T0);
     expect(handle(r, 'b', { t: 'set-ai', seat: 1, level: 'hard' }, T0)).toBe('not-host');
     handle(r, 'a', { t: 'sit', seat: 0 }, T0);
-    expect(handle(r, 'a', { t: 'start' }, T0)).toBe('need-two-seats');
     expect(handle(r, 'a', { t: 'set-ai', seat: 1, level: 'hard' }, T0)).toBeNull();
     expect(handle(r, 'b', { t: 'sit', seat: 1 }, T0)).toBe('seat-taken');
+    expect(handle(r, 'a', { t: 'set-ai', seat: 2, level: 'easy' }, T0)).toBeNull();
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBe('need-all-seats');
+    expect(handle(r, 'a', { t: 'set-ai', seat: 3, level: 'easy' }, T0)).toBeNull();
     expect(handle(r, 'b', { t: 'start' }, T0)).toBe('not-host');
     expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
-    expect(r.game?.seats).toEqual([0, 1]);
+    expect(r.game?.seats).toEqual([0, 1, 2, 3]);
     expect(r.turnDeadline).toBe(T0 + TURN_MS);
   });
 
@@ -112,6 +116,7 @@ describe('playing', () => {
   it('plays AI seats after a short delay', () => {
     const r = newRoom('BCDFG');
     handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
+    handle(r, 'a', { t: 'set-board', board: 'classic' }, T0);
     handle(r, 'a', { t: 'sit', seat: 2 }, T0);
     handle(r, 'a', { t: 'set-ai', seat: 0, level: 'easy' }, T0);
     handle(r, 'a', { t: 'start' }, T0);
@@ -145,6 +150,7 @@ describe('playing', () => {
   it('runs a whole AI game to the end, then rematch resets to the lobby', () => {
     const r = newRoom('BCDFG');
     handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
+    handle(r, 'a', { t: 'set-board', board: 'classic' }, T0);
     handle(r, 'a', { t: 'set-ai', seat: 0, level: 'easy' }, T0);
     handle(r, 'a', { t: 'set-ai', seat: 2, level: 'easy' }, T0);
     expect(handle(r, 'a', { t: 'rematch' }, T0)).toBe('not-ended');
@@ -167,6 +173,7 @@ describe('playing', () => {
 describe('boards', () => {
   it('lets only the host pick a board in the lobby and clears seats the board lacks', () => {
     const r = lobby();
+    handle(r, 'a', { t: 'set-board', board: 'four' }, T0);
     handle(r, 'b', { t: 'sit', seat: 3 }, T0);
     handle(r, 'a', { t: 'set-ai', seat: 1, level: 'easy' }, T0);
     expect(view(r).board).toBe('four');
@@ -206,20 +213,23 @@ describe('boards', () => {
     const r = lobby();
     delete r.board;
     expect(view(r).board).toBe('four');
+    handle(r, 'a', { t: 'set-ai', seat: 1, level: 'easy' }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 3, level: 'easy' }, T0);
     expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
     expect(r.game!.board).toBe('four');
   });
 });
 
 describe('looks', () => {
-  it('lets only the host change the look, in any phase', () => {
+  it('lets only the host change the look, and only in the lobby', () => {
     const r = lobby();
     expect(view(r).look).toEqual({ court: 'earth', pieces: 'pebbles' });
     const look = { court: 'slate', pieces: 'foods' } as const;
     expect(handle(r, 'b', { t: 'set-look', look }, T0)).toBe('not-host');
-    expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
     expect(handle(r, 'a', { t: 'set-look', look }, T0)).toBeNull();
     expect(view(r).look).toEqual(look);
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
+    expect(handle(r, 'a', { t: 'set-look', look }, T0)).toBe('not-lobby');
     delete r.look; // rooms saved before looks existed
     expect(view(r).look).toEqual({ court: 'earth', pieces: 'pebbles' });
   });

@@ -39,7 +39,6 @@ export default {
   'lobby.leadHost': 'আপনি হোস্ট। বন্ধুদের লিংক পাঠান, চাইলে ফাঁকা আসনে এআই বসান, তারপর খেলা শুরু করুন।',
   'lobby.seats': 'আসন',
   'lobby.start': 'খেলা শুরু করুন',
-  'lobby.needTwo': 'অন্তত দুটি আসন ভরা থাকতে হবে।',
   'lobby.waitHost': 'হোস্ট খেলা শুরু করার অপেক্ষায়…',
 
   'seat.you': 'আপনি',
@@ -84,4 +83,6 @@ export default {
   'error.bad-message': 'কিছু একটা ভুল হয়েছে। পেজটি রিলোড করুন।',
   'error.too-big': 'বার্তাটি খুব বড় ছিল।',
   'error.rate-limit': 'একটু ধীরে চাল দিন।',
+  'lobby.needAll': 'সব আসনে খেলোয়াড় বা এআই বসান।',
+  'error.need-all-seats': 'আগে সব আসনে খেলোয়াড় বা এআই বসান।',
 } satisfies Dict;

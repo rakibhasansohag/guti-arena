@@ -12,7 +12,7 @@ import {
 } from '@guti-arena/engine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BoardPicker, LookPicker, SEGMENT, SeatPip } from '@/game';
+import { BoardPicker, LookPicker, SEGMENT, SeatPip, SetupLayout } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { savedName } from '@/net';
@@ -197,9 +197,9 @@ export function Lobby({
   // Rooms from an older server have no board: the four-colour board.
   const board = BOARDS[room.board ?? 'four'];
   const seats = room.seats.filter((s) => board.seats.includes(s.seat));
-  const filled = seats.filter((s) => s.kind !== 'empty').length;
+  const ready = seats.every((s) => s.kind !== 'empty');
   return (
-    <section className={cn(WRAP, 'max-w-3xl py-6 sm:py-10 4xl:max-w-5xl')}>
+    <section className={cn(WRAP, 'py-6 sm:py-10')}>
       <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-4xl 3xl:text-5xl">
         {t('lobby.title')}
       </h1>
@@ -210,7 +210,7 @@ export function Lobby({
         <Invite code={room.code} />
       </div>
 
-      <div className={cn(CARD, 'mt-6')}>
+      <SetupLayout board={board.id} look={room.look ?? DEFAULT_LOOK}>
         <BoardPicker
           value={board.id}
           onChange={isHost ? (id) => send({ t: 'set-board', board: id }) : null}
@@ -222,19 +222,27 @@ export function Lobby({
           ))}
         </ul>
         <LookPicker value={room.look ?? DEFAULT_LOOK} onChange={onLook} className="mt-6" />
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="sticky bottom-3 z-10 mt-8 flex flex-col gap-2 sm:flex-row sm:items-center">
           {isHost ? (
             <>
-              <Button disabled={filled < 2} onClick={() => send({ t: 'start' })} className={CTA}>
+              <Button
+                disabled={!ready}
+                onClick={() => send({ t: 'start' })}
+                className={cn(CTA, 'shadow-clay-lift')}
+              >
                 {t('lobby.start')}
               </Button>
-              {filled < 2 && <p className="text-sm">{t('lobby.needTwo')}</p>}
+              {!ready && (
+                <p className="rounded-full bg-chalk px-3 py-1 text-sm">{t('lobby.needAll')}</p>
+              )}
             </>
           ) : (
-            <p className="font-display font-extrabold">{t('lobby.waitHost')}</p>
+            <p className="rounded-full bg-chalk px-3 py-1 font-display font-extrabold">
+              {t('lobby.waitHost')}
+            </p>
           )}
         </div>
-      </div>
+      </SetupLayout>
 
       <div className={cn(CARD, 'mt-6')}>
         <NameForm label={t('name.save')} onSave={join} />

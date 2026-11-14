@@ -17,26 +17,24 @@ export default {
 
   'setup.title': 'Play on this device',
   'setup.lead':
-    'Pick a board and how many seats play, then make each seat a person or an AI. People take turns on this screen.',
-  'setup.board': 'Board',
+    'Pick a game, choose who plays each seat, then pick the court and pieces. The picture shows the game you will get.',
+  'setup.board': 'Game',
   'boards.four': 'Four colours',
-  'boards.four.hint': '7 by 7 grid with a triangle on every side. 2 to 4 players, 18 pieces each.',
-  'boards.classic': 'Classic',
+  'boards.four.hint':
+    'Four armies on a 7 by 7 grid with a triangle on every side. Every seat plays: fill the ones without a person with AI.',
+  'boards.classic': 'Sholo Guti',
   'boards.classic.hint':
-    'The classic Sholo Guti board: 5 by 5 grid with diagonals and two triangles. 2 players, 16 pieces each.',
+    'The classic game: a 5 by 5 grid with diagonals and a triangle at each end. Jump a piece to take it; taking is optional.',
   'boards.quick': 'Quick',
-  'boards.quick.hint': '5 by 5 grid with diagonals, no triangles. 2 players, 12 pieces each.',
-  'setup.players': 'Players',
-  'setup.count': '{n} players',
+  'boards.quick.hint': 'A short game on the 5 by 5 grid with diagonals, without the triangles.',
   'setup.seats': 'Seats',
   'setup.seatKind': '{colour} seat',
   'setup.start': 'Start game',
 
   'look.title': 'Court and pieces',
-  'look.open': 'Change the court and pieces',
   'look.court': 'Court',
   'look.pieces': 'Pieces',
-  'look.preview': '{court} with {pieces}.',
+  'look.preview': '{court}, {pieces}.',
   'look.hostPicks': 'The host picks the look for everyone.',
   'courts.earth': 'Packed earth',
   'courts.wood': 'Wooden board',
@@ -89,4 +87,7 @@ export default {
   'end.rematch': 'Play again',
   'end.setup': 'Change players',
   'end.home': 'Go home',
+  'boards.four.tag': '4 players · 18 pieces each',
+  'boards.classic.tag': '2 players · 16 pieces each',
+  'boards.quick.tag': '2 players · 12 pieces each',
 } satisfies Dict;

@@ -49,7 +49,7 @@ describe('worker', () => {
     a.ws.send(JSON.stringify({ t: 'join', playerId: 'a', name: 'x'.repeat(2000) }));
     expect(await a.next()).toEqual({ t: 'error', code: 'too-big' });
     a.ws.send(JSON.stringify({ t: 'start' }));
-    expect(await a.next()).toEqual({ t: 'error', code: 'need-two-seats' });
+    expect(await a.next()).toEqual({ t: 'error', code: 'need-all-seats' });
     a.ws.close();
   });
 });

@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import { WifiOff } from 'lucide-react';
 import { DEFAULT_LOOK, type Look } from '@guti-arena/engine';
-import { GameHeader, LookButton, LookContext, saveLook, savedLook } from '@/game';
+import { GameHeader, Scene, saveLook, savedLook } from '@/game';
 import { useT } from '@/i18n';
 import { savedName, useRoom } from '@/net';
 import { CreateRoom } from '@/room/create-room';
@@ -17,19 +17,19 @@ export default function Page() {
   const t = useT('room');
   const code = (useParams().code ?? '').toUpperCase();
   return (
-    <div className="flex min-h-dvh flex-col">
+    <>
       <title>{t('meta.title')}</title>
       {/* Rooms are private; robots.txt disallows /r/ too. */}
       <meta name="robots" content="noindex" />
       {CODE.test(code) ? (
         <Room key={code} code={code} />
       ) : (
-        <>
+        <Scene look={DEFAULT_LOOK}>
           <GameHeader />
           <Main>{code === 'NEW' ? <CreateRoom /> : <Problem kind="room-not-found" />}</Main>
-        </>
+        </Scene>
       )}
-    </div>
+    </>
   );
 }
 
@@ -64,18 +64,16 @@ function Room({ code }: { code: string }) {
 
   if (fatal)
     return (
-      <>
+      <Scene look={DEFAULT_LOOK}>
         <GameHeader />
         <Main>
           <Problem kind={fatal} />
         </Main>
-      </>
+      </Scene>
     );
   return (
-    <LookContext value={look}>
-      <GameHeader>
-        {isHost && room.phase !== 'lobby' && <LookButton value={look} onChange={setLook} />}
-      </GameHeader>
+    <Scene look={look}>
+      <GameHeader />
       <Main>
         {connection === 'reconnecting' && (
           <p
@@ -106,6 +104,6 @@ function Room({ code }: { code: string }) {
           </p>
         )}
       </Main>
-    </LookContext>
+    </Scene>
   );
 }

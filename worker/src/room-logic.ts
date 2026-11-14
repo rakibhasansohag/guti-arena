@@ -191,14 +191,16 @@ export function handle(
       return null;
     case 'set-look':
       if (!isHost) return 'not-host';
+      if (r.phase !== 'lobby') return 'not-lobby'; // the look stays for the whole game
       r.look = m.look;
       return null;
     case 'start': {
       if (!isHost) return 'not-host';
       if (r.phase !== 'lobby') return 'not-lobby';
-      const filled = SEATS.filter((s) => seatTaken(r, s));
-      if (filled.length < 2) return 'need-two-seats';
-      r.game = createGame(filled, r.board ?? 'four');
+      // The board sets the player count: every seat needs a player or an AI.
+      const seats = BOARDS[r.board ?? 'four'].seats;
+      if (!seats.every((s) => seatTaken(r, s))) return 'need-all-seats';
+      r.game = createGame(seats, r.board ?? 'four');
       r.phase = 'playing';
       r.turnDeadline = now + TURN_MS;
       return null;

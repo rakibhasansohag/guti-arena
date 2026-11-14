@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
@@ -15,7 +14,6 @@ import {
   boardOf,
   countPieces,
   legalMoves,
-  type Board,
   type GameState,
   type Move,
   type PointId,
@@ -27,8 +25,9 @@ import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Guti } from '@/share/guti';
 import { SEAT_COLOUR_NAME } from '@/share/seat-colours';
-import { CourtGround } from './court.tsx';
-import { COURT, useLook } from './look.ts';
+import { BoardBase } from './board-base.tsx';
+import { positions, turnsFor, viewOf, type Pos } from './board-view.ts';
+import { COURT, shadeOf, useLook } from './look.ts';
 import { play } from './sound.ts';
 import { track, type Tracked } from './track.ts';
 import { useNum } from './use-num.ts';
@@ -36,7 +35,6 @@ import { useNum } from './use-num.ts';
 const SEATS: Seat[] = [0, 1, 2, 3];
 /** The server's turn length (worker/src/room-logic.ts); the timer ring drains from here. */
 const TURN_MS = 30_000;
-type Pos = Record<PointId, { x: number; y: number }>;
 
 export interface GameBoardProps {
   state: GameState;
@@ -51,33 +49,6 @@ export interface GameBoardProps {
   bottomSeat?: Seat | null;
   className?: string;
 }
-
-/** Board positions with `bottom` turned to the south edge. */
-function positions(board: Board, bottom: Seat | null): Pos {
-  const turns = bottom === null ? 0 : (2 - bottom + 4) % 4; // quarter turns clockwise
-  const pos: Pos = {};
-  for (const p of board.points) {
-    let [x, y] = [p.x, p.y];
-    for (let k = 0; k < turns; k++) [x, y] = [board.size - 1 - y, x];
-    pos[p.id] = { x, y };
-  }
-  return pos;
-}
-
-/**
- * Half the view box per board, from the grid centre. The two-player boards are tall and narrow,
- * so their badges stand upright in the free columns beside the board.
- */
-const HALF_VIEW = { four: 5.6, classic: 4.6, quick: 4.6 } as const;
-const BADGE_SIZE = { wide: 'h-[16%] w-[31%]', tall: 'h-[30%] w-[22%]' } as const;
-
-/** Badge corner per screen side (0 top, 1 right, 2 bottom, 3 left), beside that side's triangle. */
-const CORNER = [
-  'top-[1%] right-[1%]',
-  'bottom-[1%] right-[1%]',
-  'bottom-[1%] left-[1%]',
-  'top-[1%] left-[1%]',
-] as const;
 
 /** Renders any game state and animates the change from the previous one. */
 export function GameBoard({
@@ -96,10 +67,8 @@ export function GameBoard({
   const svgRef = useRef<SVGSVGElement>(null);
   const board = boardOf(state);
   const pos = useMemo(() => positions(board, bottomSeat), [board, bottomSeat]);
-  const mid = (board.size - 1) / 2;
-  const half = HALF_VIEW[board.id];
-  const badge = board.seats.length > 2 ? 'wide' : 'tall';
-  const turns = bottomSeat === null ? 0 : (2 - bottomSeat + 4) % 4;
+  const view = useMemo(() => viewOf(pos), [pos]);
+  const turns = turnsFor(bottomSeat);
   const look = useLook();
   const court = COURT[look.court];
 
@@ -223,57 +192,53 @@ export function GameBoard({
           ? t('status.thinking', { name: name(state.turn) })
           : t('status.turn', { name: name(state.turn) });
 
+  // Seat panels sit outside the board: a row above (screen sides left and top) and one below.
+  const panels = (row: 0 | 1) => (
+    <div className="flex gap-2 px-2">
+      {(row === 0 ? [3, 0] : [2, 1]).flatMap((side) =>
+        state.seats
+          .filter((s) => (s + turns) % 4 === side)
+          .map((s) => (
+            <SeatPanel
+              key={s}
+              seat={s}
+              info={seats[s]}
+              name={name(s)}
+              count={counts[s]}
+              active={state.winner === null && state.turn === s}
+              deadline={state.turn === s ? turnDeadline : null}
+            />
+          )),
+      )}
+    </div>
+  );
+
   return (
     <MotionConfig reducedMotion="user">
-      <div className={cn('flex flex-col items-center gap-3', className)}>
-        <div className="relative aspect-square w-full">
+      <div
+        className={cn('mx-auto flex w-full flex-col gap-2', className)}
+        // The board is as wide as the screen allows while the panels and status still fit its height.
+        style={{ maxWidth: `max(17rem, calc((100dvh - 17rem) * ${view.w / view.h}))` }}
+      >
+        {panels(0)}
+        <div className="relative w-full" style={{ aspectRatio: `${view.w} / ${view.h}` }}>
           <svg
             ref={svgRef}
-            viewBox={`${mid - half} ${mid - half} ${2 * half} ${2 * half}`}
+            viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
             className="block size-full touch-manipulation select-none"
-            style={
-              { '--piece-shadow': court.dark ? 'var(--color-chalk)' : undefined } as CSSProperties
-            }
+            style={shadeOf(look)}
             onClick={onClick}
             role="group"
             aria-label={t('board.label')}
           >
             <defs>
-              <filter id={`wobble-${uid}`} x="-5%" y="-5%" width="110%" height="110%">
-                <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="7" />
-                <feDisplacementMap in="SourceGraphic" scale="0.09" />
-              </filter>
               {SEATS.map((s) => (
                 <g key={s} id={`pebble-${s}-${uid}`}>
                   <Guti set={look.pieces} seat={s} />
                 </g>
               ))}
             </defs>
-
-            <CourtGround
-              court={look.court}
-              uid={uid}
-              x={mid - half}
-              y={mid - half}
-              width={2 * half}
-              height={2 * half}
-            />
-
-            <g
-              filter={`url(#wobble-${uid})`}
-              stroke={court.line}
-              strokeWidth={0.1}
-              strokeLinecap="round"
-            >
-              {board.lines.map((line) => {
-                const a = pos[line[0]!]!;
-                const b = pos[line[line.length - 1]!]!;
-                return <line key={line.join()} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />;
-              })}
-            </g>
-            {board.points.map((p) => (
-              <circle key={p.id} cx={pos[p.id]!.x} cy={pos[p.id]!.y} r={0.08} fill={court.line} />
-            ))}
+            <BoardBase board={board} pos={pos} view={view} uid={uid} look={look} />
 
             {tracked.lastMove && (
               <g fill="none" stroke="var(--color-clay)" strokeWidth={0.07} opacity={0.85}>
@@ -358,21 +323,8 @@ export function GameBoard({
               />
             ))}
           </svg>
-
-          {state.seats.map((s) => (
-            <SeatBadge
-              key={s}
-              seat={s}
-              info={seats[s]}
-              name={name(s)}
-              count={counts[s]}
-              active={state.winner === null && state.turn === s}
-              deadline={state.turn === s ? turnDeadline : null}
-              corner={CORNER[(s + turns) % 4]!}
-              layout={badge}
-            />
-          ))}
         </div>
+        {panels(1)}
 
         <div className="flex min-h-12 flex-wrap items-center justify-center gap-3 px-4 3xl:min-h-14">
           <p aria-live="polite" className="font-display text-lg font-extrabold 3xl:text-xl">
@@ -448,15 +400,13 @@ const Pieces = memo(function Pieces({
   );
 });
 
-function SeatBadge({
+function SeatPanel({
   seat,
   info,
   name,
   count,
   active,
   deadline,
-  corner,
-  layout,
 }: {
   seat: Seat;
   info: SeatInfo | undefined;
@@ -464,8 +414,6 @@ function SeatBadge({
   count: number;
   active: boolean;
   deadline: number | null;
-  corner: string;
-  layout: keyof typeof BADGE_SIZE;
 }) {
   const t = useT('game');
   const num = useNum();
@@ -474,37 +422,28 @@ function SeatBadge({
   return (
     <div
       className={cn(
-        'absolute flex items-center gap-2 rounded-clay bg-chalk/90 px-2 shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-3',
-        BADGE_SIZE[layout],
-        layout === 'tall' && 'flex-col justify-center text-center sm:gap-2',
-        corner,
+        'flex min-w-0 flex-1 items-center gap-2 rounded-clay bg-chalk/90 px-2.5 py-1.5 text-charcoal shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-4 sm:py-2',
         active && '-translate-y-0.5 shadow-clay-lift ring-[3px]',
         out && 'opacity-50',
       )}
     >
-      <span
-        className={cn('relative aspect-square shrink-0', layout === 'tall' ? 'h-[36%]' : 'h-[62%]')}
+      <svg
+        viewBox="-0.6 -0.6 1.2 1.2"
+        aria-hidden="true"
+        className="size-10 shrink-0 overflow-visible sm:size-12"
       >
-        <svg viewBox="-0.6 -0.6 1.2 1.2" aria-hidden="true" className="size-full overflow-visible">
-          <Guti set={pieces} seat={seat} />
-          {active && deadline !== null && <TimerRing key={deadline} deadline={deadline} />}
-        </svg>
-      </span>
-      <span className={cn('min-w-0 leading-tight', layout === 'tall' && 'w-full')}>
-        <span
-          className={cn(
-            'flex items-center gap-1.5',
-            layout === 'tall' && 'flex-wrap justify-center gap-1',
-          )}
-        >
+        <Guti set={pieces} seat={seat} />
+        {active && deadline !== null && <TimerRing key={deadline} deadline={deadline} />}
+      </svg>
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="flex items-center gap-1.5">
           <span className="truncate font-display text-sm font-extrabold sm:text-base 3xl:text-lg">
             {name}
           </span>
           {info?.kind === 'ai' && info.level && (
-            <span className="flex shrink-0 items-center gap-1 rounded-full bg-charcoal px-1.5 py-0.5 font-display text-xs font-extrabold text-chalk sm:py-0 sm:text-sm">
-              <Bot aria-hidden="true" className="size-3.5 sm:hidden" />
-              {/* Phones show only the robot icon; the level stays readable to screen readers. */}
-              <span className="sr-only sm:not-sr-only">{t(`level.${info.level}`)}</span>
+            <span className="flex shrink-0 items-center gap-1 rounded-full bg-charcoal px-1.5 py-0.5 font-display text-xs font-extrabold text-chalk">
+              <Bot aria-hidden="true" className="size-3.5" />
+              {t(`level.${info.level}`)}
             </span>
           )}
           {info?.kind === 'human' && !info.connected && (

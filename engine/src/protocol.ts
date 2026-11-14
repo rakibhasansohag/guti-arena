@@ -48,7 +48,7 @@ export interface RoomState {
   phase: 'lobby' | 'playing' | 'ended';
   hostId: string;
   board: BoardId; // the host picks it in the lobby
-  look: Look; // the host picks it any time; cosmetic only
+  look: Look; // the host picks it in the lobby; cosmetic only
   seats: SeatInfo[]; // always 4 entries
   game: GameState | null;
   turnDeadline: number | null; // epoch ms
@@ -64,7 +64,7 @@ export type ClientMessage =
   | { t: 'stand' }
   | { t: 'set-ai'; seat: Seat; level: AiLevel | null }
   | { t: 'set-board'; board: BoardId } // host, lobby only; seats the board lacks are cleared
-  | { t: 'set-look'; look: Look } // host, any phase; cosmetic only
+  | { t: 'set-look'; look: Look } // host, lobby only; cosmetic
   | { t: 'start' }
   | { t: 'move'; from: PointId; to: PointId }
   | { t: 'end-chain' }

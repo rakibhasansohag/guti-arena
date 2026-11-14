@@ -10,6 +10,7 @@ import {
   type AiLevel,
   type BoardId,
   type GameState,
+  type Look,
   type Move,
   type Seat,
   type SeatInfo,
@@ -21,11 +22,11 @@ import {
   BoardPicker,
   GameBoard,
   GameHeader,
-  LookButton,
-  LookContext,
   LookPicker,
   SEGMENT,
+  Scene,
   SeatPip,
+  SetupLayout,
   saveLook,
   useSavedLook,
 } from '@/game';
@@ -35,30 +36,24 @@ import { SEAT_COLOUR_NAME, Seo } from '@/share';
 import { CTA, WRAP } from '@/share/site-chrome';
 
 type Kind = 'human' | AiLevel;
-type Count = 2 | 3 | 4;
-
 const SEATS: Seat[] = [0, 1, 2, 3];
 const KINDS: Kind[] = ['human', 'easy', 'medium', 'hard'];
-/** Seats in play per player count; you sit south (seat 2, bottom) by default. */
-const SEATS_FOR: Record<Count, Seat[]> = { 2: [0, 2], 3: [0, 1, 2], 4: [0, 1, 2, 3] };
 /** Time an AI move stays on screen before the next one, so moves are readable. */
 const AI_DELAY_MS = 700;
 
 interface Setup {
   board: BoardId;
-  /** Players on the four-colour board; the two-player boards always seat north and south. */
-  count: Count;
   kinds: Record<Seat, Kind>;
 }
 
+/** You sit south (seat 2, bottom) against medium AI by default. */
 const DEFAULT_SETUP: Setup = {
   board: 'four',
-  count: 2,
   kinds: { 0: 'medium', 1: 'medium', 2: 'human', 3: 'medium' },
 };
 
-const seatsOf = (s: Setup): Seat[] =>
-  s.board === 'four' ? SEATS_FOR[s.count] : BOARDS[s.board].seats;
+/** Every seat of the board plays: the board sets the player count. */
+const seatsOf = (s: Setup): Seat[] => BOARDS[s.board].seats;
 
 function apply(s: GameState, choice: Move | 'end-chain'): GameState {
   return choice === 'end-chain' ? endChain(s) : applyMove(s, choice);
@@ -108,91 +103,68 @@ export default function Page() {
   });
 
   return (
-    <LookContext value={look}>
-      <div className="flex min-h-dvh flex-col">
-        <Seo path="/play" title={t('seo.title')} description={t('seo.description')} />
-        <GameHeader>{state && <LookButton value={look} onChange={saveLook} />}</GameHeader>
+    <Scene look={look}>
+      <Seo path="/play" title={t('seo.title')} description={t('seo.description')} />
+      <GameHeader />
 
-        <main className="flex flex-1 flex-col items-center justify-center pb-4">
-          {state ? (
-            <div className="relative w-[min(100vw,calc(100dvh-8.5rem))] max-w-full">
-              <GameBoard
-                state={state}
-                mySeat={mySeat}
-                bottomSeat={solo}
-                seats={seatInfo}
-                turnDeadline={null}
-                onMove={(m) => setState((s) => s && applyMove(s, m))}
-                onEndChain={() => setState((s) => s && endChain(s))}
-              />
-              <AnimatePresence>
-                {state.winner !== null && (
-                  <EndCard
-                    state={state}
-                    seatInfo={seatInfo}
-                    solo={solo}
-                    onRematch={() => setState(createGame(seats, setup.board))}
-                    onSetup={() => setState(null)}
-                  />
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <SetupCard
-              setup={setup}
-              onChange={setSetup}
-              onStart={() => setState(createGame(seats, setup.board))}
+      <main className="flex flex-1 flex-col items-center justify-center pb-4">
+        {state ? (
+          <div className="relative w-full">
+            <GameBoard
+              state={state}
+              mySeat={mySeat}
+              bottomSeat={solo}
+              seats={seatInfo}
+              turnDeadline={null}
+              onMove={(m) => setState((s) => s && applyMove(s, m))}
+              onEndChain={() => setState((s) => s && endChain(s))}
             />
-          )}
-        </main>
-      </div>
-    </LookContext>
+            <AnimatePresence>
+              {state.winner !== null && (
+                <EndCard
+                  state={state}
+                  seatInfo={seatInfo}
+                  solo={solo}
+                  onRematch={() => setState(createGame(seats, setup.board))}
+                  onSetup={() => setState(null)}
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <SetupCard
+            look={look}
+            setup={setup}
+            onChange={setSetup}
+            onStart={() => setState(createGame(seats, setup.board))}
+          />
+        )}
+      </main>
+    </Scene>
   );
 }
 
 function SetupCard({
+  look,
   setup,
   onChange,
   onStart,
 }: {
+  look: Look;
   setup: Setup;
   onChange: (s: Setup) => void;
   onStart: () => void;
 }) {
   const t = useT('game');
-  const num = useNum();
   return (
-    <section className={cn(WRAP, 'max-w-2xl py-6 sm:py-10 4xl:max-w-4xl')}>
+    <section className={cn(WRAP, 'py-6 sm:py-10')}>
       <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-4xl 3xl:text-5xl">
         {t('setup.title')}
       </h1>
       <p className="mt-2 max-w-prose text-base sm:text-lg">{t('setup.lead')}</p>
 
-      <div className="mt-6 rounded-clay bg-card p-4 shadow-clay sm:p-6 3xl:p-8">
+      <SetupLayout board={setup.board} look={look}>
         <BoardPicker value={setup.board} onChange={(board) => onChange({ ...setup, board })} />
-
-        {setup.board === 'four' && (
-          <>
-            <h2 className="mt-6 font-display text-lg font-extrabold">{t('setup.players')}</h2>
-            <div
-              role="group"
-              aria-label={t('setup.players')}
-              className="mt-2 flex gap-1 rounded-full bg-chalk/70 p-1"
-            >
-              {([2, 3, 4] as const).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  aria-pressed={setup.count === n}
-                  onClick={() => onChange({ ...setup, count: n })}
-                  className={SEGMENT}
-                >
-                  {t('setup.count', { n: num(n) })}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
 
         <h2 className="mt-6 font-display text-lg font-extrabold">{t('setup.seats')}</h2>
         <ul className="mt-2 flex flex-col gap-3">
@@ -223,12 +195,15 @@ function SetupCard({
           ))}
         </ul>
 
-        <LookPicker value={useSavedLook()} onChange={saveLook} className="mt-6" />
+        <LookPicker value={look} onChange={saveLook} className="mt-6" />
 
-        <Button onClick={onStart} className={cn(CTA, 'mt-8 w-full sm:w-auto')}>
-          {t('setup.start')}
-        </Button>
-      </div>
+        {/* Stays in reach at the bottom of the screen while the choices scroll. */}
+        <div className="sticky bottom-3 z-10 mt-8">
+          <Button onClick={onStart} className={cn(CTA, 'w-full shadow-clay-lift sm:w-auto')}>
+            {t('setup.start')}
+          </Button>
+        </div>
+      </SetupLayout>
     </section>
   );
 }

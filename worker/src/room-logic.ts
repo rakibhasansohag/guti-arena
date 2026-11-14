@@ -5,10 +5,13 @@ import {
   isBoardId,
   createGame,
   endChain,
+  parseLook,
+  DEFAULT_LOOK,
   type AiLevel,
   type BoardId,
   type ClientMessage,
   type GameState,
+  type Look,
   type RoomState,
   type Seat,
   type SeatInfo,
@@ -41,6 +44,7 @@ export interface Room {
   players: Player[]; // join order, used to pass the host on
   ai: (AiLevel | null)[]; // per seat
   board?: BoardId; // missing in rooms saved before boards existed: 'four'
+  look?: Look; // missing in rooms saved before looks existed: DEFAULT_LOOK
   game: GameState | null;
   turnDeadline: number | null;
 }
@@ -53,6 +57,7 @@ export function newRoom(code: string): Room {
     players: [],
     ai: [null, null, null, null],
     board: 'four',
+    look: DEFAULT_LOOK,
     game: null,
     turnDeadline: null,
   };
@@ -67,7 +72,8 @@ export function view(r: Room): RoomState {
     return { seat, kind: 'empty', name: '', connected: false, level: null };
   });
   const { code, phase, hostId, game, turnDeadline } = r;
-  return { code, phase, hostId, board: r.board ?? 'four', seats, game, turnDeadline };
+  const board = r.board ?? 'four';
+  return { code, phase, hostId, board, look: r.look ?? DEFAULT_LOOK, seats, game, turnDeadline };
 }
 
 const graphemes = new Intl.Segmenter();
@@ -109,6 +115,10 @@ export function parseMessage(raw: string): ClientMessage | null {
         : null;
     case 'set-board':
       return isBoardId(m.board) ? { t: 'set-board', board: m.board } : null;
+    case 'set-look': {
+      const look = parseLook(m.look);
+      return look ? { t: 'set-look', look } : null;
+    }
     case 'move':
       return isStr(m.from, 16) && isStr(m.to, 16) ? { t: 'move', from: m.from, to: m.to } : null;
     case 'stand':
@@ -178,6 +188,10 @@ export function handle(
       // Players on seats the new board lacks stand up; AI there is removed.
       for (const x of r.players) if (x.seat !== null && !onBoard(r, x.seat)) x.seat = null;
       for (const seat of SEATS) if (!onBoard(r, seat)) r.ai[seat] = null;
+      return null;
+    case 'set-look':
+      if (!isHost) return 'not-host';
+      r.look = m.look;
       return null;
     case 'start': {
       if (!isHost) return 'not-host';

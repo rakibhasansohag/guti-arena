@@ -46,7 +46,13 @@ export function SeatMark({
 export function Pebble({ seat }: { seat: Seat }) {
   return (
     <>
-      <ellipse cy={0.2} rx={0.32} ry={0.13} fill="var(--color-charcoal)" opacity={0.25} />
+      <ellipse
+        cy={0.2}
+        rx={0.32}
+        ry={0.13}
+        fill="var(--piece-shadow, var(--color-charcoal))"
+        opacity={0.25}
+      />
       <circle
         r={0.34}
         fill={SEAT_FILL[seat]}

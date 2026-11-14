@@ -17,7 +17,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { askAi } from '@/game/ask-ai';
 import { useNum } from '@/game/use-num';
-import { BoardPicker, GameBoard, GameHeader, SEGMENT, SeatPip } from '@/game';
+import {
+  BoardPicker,
+  GameBoard,
+  GameHeader,
+  LookButton,
+  LookContext,
+  LookPicker,
+  SEGMENT,
+  SeatPip,
+  saveLook,
+  useSavedLook,
+} from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { SEAT_COLOUR_NAME, Seo } from '@/share';
@@ -57,6 +68,7 @@ export default function Page() {
   const t = useT('game');
   const [setup, setSetup] = useState<Setup>(DEFAULT_SETUP);
   const [state, setState] = useState<GameState | null>(null);
+  const look = useSavedLook();
 
   const seats = seatsOf(setup);
   const humans = seats.filter((s) => setup.kinds[s] === 'human');
@@ -96,43 +108,45 @@ export default function Page() {
   });
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <Seo path="/play" title={t('seo.title')} description={t('seo.description')} />
-      <GameHeader />
+    <LookContext value={look}>
+      <div className="flex min-h-dvh flex-col">
+        <Seo path="/play" title={t('seo.title')} description={t('seo.description')} />
+        <GameHeader>{state && <LookButton value={look} onChange={saveLook} />}</GameHeader>
 
-      <main className="flex flex-1 flex-col items-center justify-center pb-4">
-        {state ? (
-          <div className="relative w-[min(100vw,calc(100dvh-8.5rem))] max-w-full">
-            <GameBoard
-              state={state}
-              mySeat={mySeat}
-              bottomSeat={solo}
-              seats={seatInfo}
-              turnDeadline={null}
-              onMove={(m) => setState((s) => s && applyMove(s, m))}
-              onEndChain={() => setState((s) => s && endChain(s))}
+        <main className="flex flex-1 flex-col items-center justify-center pb-4">
+          {state ? (
+            <div className="relative w-[min(100vw,calc(100dvh-8.5rem))] max-w-full">
+              <GameBoard
+                state={state}
+                mySeat={mySeat}
+                bottomSeat={solo}
+                seats={seatInfo}
+                turnDeadline={null}
+                onMove={(m) => setState((s) => s && applyMove(s, m))}
+                onEndChain={() => setState((s) => s && endChain(s))}
+              />
+              <AnimatePresence>
+                {state.winner !== null && (
+                  <EndCard
+                    state={state}
+                    seatInfo={seatInfo}
+                    solo={solo}
+                    onRematch={() => setState(createGame(seats, setup.board))}
+                    onSetup={() => setState(null)}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <SetupCard
+              setup={setup}
+              onChange={setSetup}
+              onStart={() => setState(createGame(seats, setup.board))}
             />
-            <AnimatePresence>
-              {state.winner !== null && (
-                <EndCard
-                  state={state}
-                  seatInfo={seatInfo}
-                  solo={solo}
-                  onRematch={() => setState(createGame(seats, setup.board))}
-                  onSetup={() => setState(null)}
-                />
-              )}
-            </AnimatePresence>
-          </div>
-        ) : (
-          <SetupCard
-            setup={setup}
-            onChange={setSetup}
-            onStart={() => setState(createGame(seats, setup.board))}
-          />
-        )}
-      </main>
-    </div>
+          )}
+        </main>
+      </div>
+    </LookContext>
   );
 }
 
@@ -208,6 +222,8 @@ function SetupCard({
             </li>
           ))}
         </ul>
+
+        <LookPicker value={useSavedLook()} onChange={saveLook} className="mt-6" />
 
         <Button onClick={onStart} className={cn(CTA, 'mt-8 w-full sm:w-auto')}>
           {t('setup.start')}

@@ -2,15 +2,17 @@ import { useState, type FormEvent } from 'react';
 import { Check, Share2 } from 'lucide-react';
 import {
   BOARDS,
+  DEFAULT_LOOK,
   type AiLevel,
   type ClientMessage,
+  type Look,
   type RoomState,
   type Seat,
   type SeatInfo,
 } from '@guti-arena/engine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BoardPicker, SEGMENT, SeatPip } from '@/game';
+import { BoardPicker, LookPicker, SEGMENT, SeatPip } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { savedName } from '@/net';
@@ -181,11 +183,14 @@ export function Lobby({
   you,
   send,
   join,
+  onLook,
 }: {
   room: RoomState;
   you: { playerId: string; seat: Seat | null };
   send: (m: ClientMessage) => void;
   join: (name: string) => void;
+  /** Null for guests: the host picks the look for everyone. */
+  onLook: ((look: Look) => void) | null;
 }) {
   const t = useT('room');
   const isHost = room.hostId === you.playerId;
@@ -216,6 +221,7 @@ export function Lobby({
             <SeatRow key={s.seat} info={s} mine={you.seat === s.seat} isHost={isHost} send={send} />
           ))}
         </ul>
+        <LookPicker value={room.look ?? DEFAULT_LOOK} onChange={onLook} className="mt-6" />
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center">
           {isHost ? (
             <>

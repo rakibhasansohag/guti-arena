@@ -211,6 +211,29 @@ describe('boards', () => {
   });
 });
 
+describe('looks', () => {
+  it('lets only the host change the look, in any phase', () => {
+    const r = lobby();
+    expect(view(r).look).toEqual({ court: 'earth', pieces: 'pebbles' });
+    const look = { court: 'slate', pieces: 'foods' } as const;
+    expect(handle(r, 'b', { t: 'set-look', look }, T0)).toBe('not-host');
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
+    expect(handle(r, 'a', { t: 'set-look', look }, T0)).toBeNull();
+    expect(view(r).look).toEqual(look);
+    delete r.look; // rooms saved before looks existed
+    expect(view(r).look).toEqual({ court: 'earth', pieces: 'pebbles' });
+  });
+
+  it('parses only known looks and drops extra fields', () => {
+    expect(parseMessage('{"t":"set-look","look":{"court":"wood","pieces":"bhar","x":1}}')).toEqual({
+      t: 'set-look',
+      look: { court: 'wood', pieces: 'bhar' },
+    });
+    expect(parseMessage('{"t":"set-look","look":{"court":"wood","pieces":"coins"}}')).toBeNull();
+    expect(parseMessage('{"t":"set-look","look":null}')).toBeNull();
+  });
+});
+
 describe('input', () => {
   it('parses only well-formed messages', () => {
     expect(parseMessage('{"t":"sit","seat":2}')).toEqual({ t: 'sit', seat: 2 });

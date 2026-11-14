@@ -1,12 +1,15 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { Seat } from '@guti-arena/engine';
 import { cn } from '@/lib/utils';
-import { LangSwitch, SEAT_FILL, SeatMark } from '@/share';
+import { LangSwitch } from '@/share';
+import { Guti } from '@/share/guti';
 import { Logo, WRAP } from '@/share/site-chrome';
+import { useLook } from './look.ts';
 import { MuteButton } from './mute-button.tsx';
 
-/** The slim header on game pages: home link, sound and language. */
-export function GameHeader() {
+/** The slim header on game pages: home link, any page controls (`children`), sound and language. */
+export function GameHeader({ children }: { children?: ReactNode }) {
   return (
     <header className={cn(WRAP, 'flex items-center justify-between gap-3 py-3')}>
       <Link
@@ -14,9 +17,13 @@ export function GameHeader() {
         className="flex items-center gap-2 rounded-full font-display text-xl font-extrabold transition-opacity duration-200 hover:opacity-80"
       >
         <Logo />
-        <span lang="en">Guti Arena</span>
+        {/* With an extra control, narrow phones keep the name for screen readers only. */}
+        <span lang="en" className={cn('whitespace-nowrap', children && 'max-[26rem]:sr-only')}>
+          Guti Arena
+        </span>
       </Link>
       <div className="flex items-center gap-2">
+        {children}
         <MuteButton />
         <LangSwitch />
       </div>
@@ -24,22 +31,16 @@ export function GameHeader() {
   );
 }
 
-/** A small flat pebble with the seat's colour and mark, for lists and badges. */
+/** One piece of the current look with the seat's colour and mark, for lists and badges. */
 export function SeatPip({ seat, className }: { seat: Seat; className?: string }) {
+  const look = useLook();
   return (
-    <svg viewBox="-0.5 -0.5 1 1" aria-hidden="true" className={cn('size-7 shrink-0', className)}>
-      <circle
-        r={0.42}
-        fill={SEAT_FILL[seat]}
-        stroke="var(--color-charcoal)"
-        strokeWidth={seat === 2 ? 0.07 : 0.045}
-      />
-      <SeatMark
-        seat={seat}
-        x={0}
-        y={0}
-        colour={seat === 1 || seat === 2 ? 'var(--color-charcoal)' : 'var(--color-chalk)'}
-      />
+    <svg
+      viewBox="-0.42 -0.42 0.84 0.84"
+      aria-hidden="true"
+      className={cn('size-7 shrink-0 overflow-visible', className)}
+    >
+      <Guti set={look.pieces} seat={seat} />
     </svg>
   );
 }

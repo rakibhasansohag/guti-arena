@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
@@ -24,8 +25,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { Pebble, SeatMark } from '@/share/board-art';
-import { SEAT_COLOUR_NAME, SEAT_FILL } from '@/share/seat-colours';
+import { Guti } from '@/share/guti';
+import { SEAT_COLOUR_NAME } from '@/share/seat-colours';
+import { CourtGround } from './court.tsx';
+import { COURT, useLook } from './look.ts';
 import { play } from './sound.ts';
 import { track, type Tracked } from './track.ts';
 import { useNum } from './use-num.ts';
@@ -97,6 +100,8 @@ export function GameBoard({
   const half = HALF_VIEW[board.id];
   const badge = board.seats.length > 2 ? 'wide' : 'tall';
   const turns = bottomSeat === null ? 0 : (2 - bottomSeat + 4) % 4;
+  const look = useLook();
+  const court = COURT[look.court];
 
   // Piece identities across states, so pebbles slide rather than blink.
   // Updated while rendering when the pieces change (React's "adjust state on prop change" pattern).
@@ -226,6 +231,9 @@ export function GameBoard({
             ref={svgRef}
             viewBox={`${mid - half} ${mid - half} ${2 * half} ${2 * half}`}
             className="block size-full touch-manipulation select-none"
+            style={
+              { '--piece-shadow': court.dark ? 'var(--color-chalk)' : undefined } as CSSProperties
+            }
             onClick={onClick}
             role="group"
             aria-label={t('board.label')}
@@ -235,38 +243,25 @@ export function GameBoard({
                 <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="7" />
                 <feDisplacementMap in="SourceGraphic" scale="0.09" />
               </filter>
-              <pattern id={`earth-${uid}`} width="4" height="4" patternUnits="userSpaceOnUse">
-                <image href="/textures/earth.webp" width="4" height="4" />
-              </pattern>
               {SEATS.map((s) => (
                 <g key={s} id={`pebble-${s}-${uid}`}>
-                  <Pebble seat={s} />
+                  <Guti set={look.pieces} seat={s} />
                 </g>
               ))}
             </defs>
 
-            <rect
-              x={mid - half + 0.05}
-              y={mid - half + 0.05}
-              width={2 * half - 0.1}
-              height={2 * half - 0.1}
-              rx="0.5"
-              fill="var(--color-earth)"
-            />
-            <rect
-              x={mid - half + 0.05}
-              y={mid - half + 0.05}
-              width={2 * half - 0.1}
-              height={2 * half - 0.1}
-              rx="0.5"
-              fill={`url(#earth-${uid})`}
-              opacity="0.45"
-              style={{ mixBlendMode: 'multiply' }}
+            <CourtGround
+              court={look.court}
+              uid={uid}
+              x={mid - half}
+              y={mid - half}
+              width={2 * half}
+              height={2 * half}
             />
 
             <g
               filter={`url(#wobble-${uid})`}
-              stroke="var(--color-charcoal)"
+              stroke={court.line}
               strokeWidth={0.1}
               strokeLinecap="round"
             >
@@ -277,13 +272,7 @@ export function GameBoard({
               })}
             </g>
             {board.points.map((p) => (
-              <circle
-                key={p.id}
-                cx={pos[p.id]!.x}
-                cy={pos[p.id]!.y}
-                r={0.08}
-                fill="var(--color-charcoal)"
-              />
+              <circle key={p.id} cx={pos[p.id]!.x} cy={pos[p.id]!.y} r={0.08} fill={court.line} />
             ))}
 
             {tracked.lastMove && (
@@ -339,7 +328,7 @@ export function GameBoard({
                 cy={pos[focus]!.y}
                 r={0.52}
                 fill="none"
-                stroke="var(--color-clay-deep)"
+                stroke={court.dark ? 'var(--color-chalk)' : 'var(--color-clay-deep)'}
                 strokeWidth={0.07}
                 strokeDasharray="0.16 0.08"
                 className="pointer-events-none"
@@ -480,6 +469,7 @@ function SeatBadge({
 }) {
   const t = useT('game');
   const num = useNum();
+  const pieces = useLook().pieces;
   const out = count === 0;
   return (
     <div
@@ -496,19 +486,7 @@ function SeatBadge({
         className={cn('relative aspect-square shrink-0', layout === 'tall' ? 'h-[36%]' : 'h-[62%]')}
       >
         <svg viewBox="-0.6 -0.6 1.2 1.2" aria-hidden="true" className="size-full overflow-visible">
-          <circle
-            r={0.34}
-            fill={SEAT_FILL[seat]}
-            stroke="var(--color-charcoal)"
-            strokeWidth={seat === 2 ? 0.06 : 0.035}
-          />
-          <ellipse cx={-0.1} cy={-0.13} rx={0.15} ry={0.09} fill="#fff" opacity={0.45} />
-          <SeatMark
-            seat={seat}
-            x={0}
-            y={0.03}
-            colour={seat === 1 || seat === 2 ? 'var(--color-charcoal)' : 'var(--color-chalk)'}
-          />
+          <Guti set={pieces} seat={seat} />
           {active && deadline !== null && <TimerRing key={deadline} deadline={deadline} />}
         </svg>
       </span>

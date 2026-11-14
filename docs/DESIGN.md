@@ -76,10 +76,22 @@ Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and ot
 - The FAQ accordion opens and closes its height over 350 ms `ease-clay` (set with `--tw-duration` and `--tw-ease` on the accordion root).
 - No scroll-triggered reveals or parallax. The one ambient loop is the hero board's piece hopping to the centre and back every 3.2 s.
 
+## Courts and piece sets
+
+Players can change the look of the court (the board surface) and the guti (the pieces). Themes change only the court and the pieces; the site chrome (header, cards, buttons, badges) keeps the one clay-and-chalk style.
+
+- **Who picks:** on `/play`, each device (stored as `look` in `localStorage`). In a room the host picks for everyone, in the lobby or mid-game from the palette button in the header (`set-look` message; the room's `look` is in `RoomState`). A new room takes the host's remembered look. The look is cosmetic: rules, AI and the server never read it.
+- **Ids:** `COURTS` and `PIECE_SETS` in `engine/src/protocol.ts`; `earth` and `pebbles` are the defaults.
+- **Courts** (`web/src/game/court.tsx`, colours in `COURT` in `web/src/game/look.ts`): packed earth (the earth texture), wooden board (planks and grain), nakshi kantha (running-stitch rows and a stitched border, indigo lines), chalkboard (slate with a wooden frame, chalk lines), sand (ripples and grains), night courtyard (dark blue with a lantern glow, light lines). Each is an SVG `<pattern>` drawn in code, no images. Dark courts (`dark: true`) turn the pieces' contact shadow into a light halo (`--piece-shadow`) and the keyboard focus ring to chalk.
+- **Piece sets** (`Guti` in `web/src/share/guti.tsx`): pebbles (`Pebble`), sweets and fruit (rosogolla, kalojam, jilapi and mango on a plate in the seat colour), clay tea cups (bhar: terracotta lip, glaze in the seat colour, milk tea), glass marbles, sewing buttons, scallop shells (jhinuk). All are SVG at the origin, about 0.35 board units across, so moves, jumps, captures and reduced motion animate them like pebbles.
+- **Seats stay distinct in every set:** the seat colour is always the largest area of the piece and the seat mark (dot, ring, cross, diamond) sits in the middle, so protanopia and deuteranopia read the same as with pebbles. The food on the plate also differs per seat. No coins, chips, cowries or anything money-like (cowries were money in Bengal).
+- **Picker:** `LookPicker` (`web/src/game/look-picker.tsx`) shows a live preview strip and tiles for each court and set; `LookButton` opens it in a panel from the header. Seat pips (`SeatPip`) and the board's seat badges draw the current set.
+- Static pictures (`BoardArt`, the landing hero, share cards, the pre-drawn WebPs) always use the default look.
+
 ## Shared pieces
 
 - `BoardArt` (`web/src/share/board-art.tsx`) draws the board from the engine's `POINTS` and `LINES`, with pebble pieces, seat marks, the wobble filter, optional arrows (jumps arc over the piece they take) and faded "ghost" pieces. Use it for any static board picture; the playable board lives in `web/src/game/`. With `image="hero"` or `"full"` it shows the pre-drawn WebP in `web/public/board/` (800 to 2400 px, from `pnpm --filter web make-images`) instead of inline SVG: big board pictures above the fold must use this, because a detailed SVG rasterises on the main thread and delays the first paint.
-- The playable board is `GameBoard` in `web/src/game/`: the same pebbles (`Pebble` is shared), an earth texture (`public/textures/earth.webp`) multiplied over `earth`, chalk dots for legal destinations, a dashed clay ring where the last move started and a solid one where it landed. Seat badges sit in the board's corners beside each triangle (on the two-player boards they stand upright in the free columns beside the board); the active one lifts with a clay ring and, online, a draining timer ring. On phones the AI level tag shrinks to a robot icon.
+- The playable board is `GameBoard` in `web/src/game/`: the pieces and court of the current look (pebbles on packed earth by default: `Pebble` is shared, and the earth texture `public/textures/earth.webp` is multiplied over `earth`), chalk dots for legal destinations, a dashed clay ring where the last move started and a solid one where it landed. Seat badges sit in the board's corners beside each triangle (on the two-player boards they stand upright in the free columns beside the board); the active one lifts with a clay ring and, online, a draining timer ring. On phones the AI level tag shrinks to a robot icon.
 - `SEAT_FILL` (`web/src/share/seat-colours.ts`) maps seats to the piece colour variables.
 
 ## Layout

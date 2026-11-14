@@ -1,6 +1,7 @@
 // Writes static HTML for the public pages so crawlers get real content.
 // Runs after `vite build` and `vite build --ssr`; see the web build script.
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { appendFile, readdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const web = fileURLToPath(new URL('..', import.meta.url));
@@ -36,6 +37,7 @@ const pages = [
   ['/how-to-play', 'how-to-play.html'],
 ];
 
+const scriptHashes = [];
 for (const [route, file] of pages) {
   const html = await render(route);
   // Tagged so the guard below can drop them when React renders this route fresh.
@@ -48,6 +50,7 @@ for (const [route, file] of pages) {
   // Otherwise the page is already readable and its links work, so the app script waits for
   // `load`: on a slow phone the hero paints before React parses and hydrates.
   const guard = `<script>(function(){var r=document.getElementById('root'),l;try{l=new URLSearchParams(location.search).get('lang')||localStorage.getItem('lang')}catch(e){}var fresh=location.pathname!==${JSON.stringify(route)}||l==='en';if(fresh){r.replaceChildren();document.querySelectorAll('[data-prerender]').forEach(function(n){n.remove()});document.title='Guti Arena'}function go(){var s=document.createElement('script');s.type='module';s.crossOrigin='';s.src=${JSON.stringify(entry[1])};document.head.appendChild(s)}if(fresh||document.readyState==='complete')go();else addEventListener('load',go,{once:true})})()</script>`;
+  scriptHashes.push(`'sha256-${createHash('sha256').update(guard.slice(8, -9)).digest('base64')}'`);
   const out = template
     .replace(/<title>[\s\S]*?<\/title>/, '')
     .replace('</head>', `    ${head}\n  </head>`)
@@ -57,3 +60,30 @@ for (const [route, file] of pages) {
   await writeFile(`${web}dist/${file}`, out);
   console.log(`prerendered ${route} -> dist/${file} (${out.length} bytes)`);
 }
+
+// The guard scripts embed the hashed entry file name, so their CSP hashes change every build.
+// Turnstile needs its own script, frames and connections (developers.cloudflare.com/turnstile/reference/content-security-policy/).
+const TURNSTILE = 'https://challenges.cloudflare.com';
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' ${scriptHashes.join(' ')} ${TURNSTILE}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  `connect-src 'self' ${TURNSTILE}`,
+  `frame-src ${TURNSTILE}`,
+  "worker-src 'self'",
+  "media-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+await appendFile(
+  `${web}dist/_headers`,
+  `
+/*
+  Content-Security-Policy: ${csp}
+`,
+);
+console.log('wrote Content-Security-Policy to dist/_headers');

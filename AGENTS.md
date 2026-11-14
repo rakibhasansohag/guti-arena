@@ -19,9 +19,12 @@ No betting, wagering or money features anywhere, including copy and art.
   - `src/i18n/`: `useT(namespace)` over plain dictionaries, `<namespace>.<bn|en>.ts`. Language is a `?lang=bn|en` link (remembered), else the `lang` value in `localStorage`, default `bn`.
   - `src/pages/`: one lazy-loaded page per route: `/`, `/how-to-play`, `/play`, `/r/:code`. Each page renders its own `<title>` (React 19 hoists it); `index.html` only has a fallback.
   - `src/share/`: `BoardArt` (static board drawing from the engine's points and lines), `ShareCard` and `shareInvite` (result card and room invites), `Seo` (per-page head tags), `SiteHeader`, `SiteFooter`, `LangSwitch`.
-  - Prerender: `pnpm --filter web build` also renders `/` and `/how-to-play` to static Bangla HTML (`src/entry-server.tsx`, `scripts/prerender.mjs`); `main.tsx` hydrates it. Anything those two pages render must give the same markup on server and client: no `window`, `localStorage` or random values during render. The prerender inlines the CSS and starts the app script after the `load` event on those two pages (at once for any other route or for English), so their buttons become interactive a moment after the page shows.
+  - `src/game/`: `<GameBoard />` (renders any `GameState`, animates the change, emits moves; used by `/play` and rooms), `sound.ts` (Kenney clips, mute in `localStorage`), `ask-ai.ts` + `ai-worker.ts` (engine AI in a Web Worker), `GameHeader`, `SeatPip`, `MuteButton`.
+  - `src/net/`: `useRoom(code)` (one WebSocket, backoff reconnect, auto-rejoin with the remembered name), `playerId` and name in `localStorage`, Turnstile loader (production site key on the live host, Cloudflare's test key elsewhere).
+  - `src/room/`: `/r/new` creation, name prompt, lobby, live game and end screen, and the not-found / full / daily-limit screens.
+  - Prerender: `pnpm --filter web build` also renders `/` and `/how-to-play` to static Bangla HTML (`src/entry-server.tsx`, `scripts/prerender.mjs`); `main.tsx` hydrates it. Anything those two pages render must give the same markup on server and client: no `window`, `localStorage` or random values during render. The prerender inlines the CSS and starts the app script after the `load` event on those two pages (at once for any other route or for English), so their buttons become interactive a moment after the page shows. It also appends the Content-Security-Policy to `dist/_headers`, with hashes of those inline scripts (they change every build); security and cache headers live in `public/_headers`.
   - `pnpm --filter web make-images` regenerates `public/og/guti-arena.png`, `public/icons/*` and the board pictures `public/board/*.webp` with headless Edge or Chrome and ffmpeg. Re-run it after changing `BoardArt` or the start position.
-- `worker/`: Cloudflare Worker. `wrangler.jsonc` serves `../web/dist` with single-page-app fallback; only `/api/*` runs the Worker. Durable Object binding `ROOM`, class `Room`, SQLite storage (declared with `exports`). Run `pnpm --filter worker cf-typegen` after editing `wrangler.jsonc`.
+- `worker/`: Cloudflare Worker. `wrangler.jsonc` serves `../web/dist` with single-page-app fallback; only `/api/*` runs the Worker. Durable Object binding `ROOM`, class `Room`, SQLite storage (declared with `exports`). Run `pnpm --filter worker cf-typegen` after editing `wrangler.jsonc`. Room rules are plain functions in `src/room-logic.ts` (tested in `test/`); `src/index.ts` is the Durable Object and the `/api` routes. Deployed to the custom domain `guti.rakibhasansohag.com` (`workers_dev` off). Secret `TURNSTILE_SECRET` is set in Cloudflare; `.dev.vars` holds Cloudflare's public always-pass test secret for local dev.
 - `docs/DESIGN.md`: the design system.
 
 ## Scripts (from the repo root)
@@ -63,8 +66,8 @@ Run one package with `pnpm --filter <name> <script>`, e.g. `pnpm --filter @guti-
 
 The owner allows agents to commit in this repo.
 
-- Commit when a phase of work is complete and its checks pass. Push to `origin main` when a major part is finished, and always at the end of a chat.
-- Stage only paths you own: `git add <paths>`, never `git add -A` or `git add .`. Other chats may be working in the same checkout.
+- Commit when a phase of work is complete and its checks pass. Push to `origin main` when a major part is finished, and at the end of every session.
+- Stage only paths you own: `git add <paths>`, never `git add -A` or `git add .`. Other agents may be working in the same checkout.
 - Before pushing: `git pull --rebase origin main`. If the rebase conflicts in a file you do not own, stop and report it.
 - Commit messages: short imperative subject, for example `engine: add capture chains`. No AI attribution, no co-author trailer, no session links.
 - Never force-push, never rewrite pushed history.

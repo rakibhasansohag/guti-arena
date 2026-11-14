@@ -29,7 +29,7 @@ pnpm dev
 | `engine/` | Board, rules, AI and the client–server protocol, in plain TypeScript, shared by web and worker |
 | `web/`    | Vite, React, Tailwind CSS, shadcn/ui and Motion client                                         |
 | `worker/` | Cloudflare Worker that serves the built client and runs one Durable Object per online room     |
-| `docs/`   | Design system (`DESIGN.md`) and build plans                                                    |
+| `docs/`   | Design system (`DESIGN.md`)                                                                    |
 
 ## Credits
 

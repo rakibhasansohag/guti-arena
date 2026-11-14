@@ -100,7 +100,7 @@ function RoomEnd({
         <ul className="mt-3 flex flex-col gap-1.5">
           {game.seats.map((s) => (
             <li key={s} className={cn('flex items-center gap-3', s === w && 'font-extrabold')}>
-              <SeatPip seat={s} className="size-6" />
+              <SeatPip seat={s} board={game.board} className="size-6" />
               <span className="flex-1 truncate font-display font-extrabold">{name(s)}</span>
               <span>{num(counts[s])}</span>
             </li>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import type { Seat } from '@guti-arena/engine';
+import type { BoardId, Seat } from '@guti-arena/engine';
 import { cn } from '@/lib/utils';
 import { LangSwitch } from '@/share';
 import { Guti } from '@/share/guti';
@@ -27,7 +27,15 @@ export function GameHeader() {
 }
 
 /** One piece of the current look with the seat's colour and mark, for lists and badges. */
-export function SeatPip({ seat, className }: { seat: Seat; className?: string }) {
+export function SeatPip({
+  seat,
+  board,
+  className,
+}: {
+  seat: Seat;
+  board?: BoardId;
+  className?: string;
+}) {
   const look = useLook();
   return (
     <svg
@@ -35,7 +43,7 @@ export function SeatPip({ seat, className }: { seat: Seat; className?: string })
       aria-hidden="true"
       className={cn('size-7 shrink-0 overflow-visible', className)}
     >
-      <Guti set={look.pieces} seat={seat} />
+      <Guti set={look.pieces} seat={seat} board={board} />
     </svg>
   );
 }

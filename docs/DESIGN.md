@@ -86,6 +86,7 @@ Players can change the look of the court (the board surface and the page around 
 - **Scenes:** every court also has a page background (`scene` in `COURT`, plain CSS colours and gradients): a plank table, a quilt, a classroom wall, a beach, a moonlit yard. `Scene` (`web/src/game/scene.tsx`) wraps a game page in it; `sceneDark` scenes set text that sits straight on the page to chalk, and cards (`bg-card`) keep charcoal text.
 - **Piece sets** (`Guti` in `web/src/share/guti.tsx`): pebbles (`Pebble`), sweets and fruit (rosogolla, kalojam, jilapi and mango on a plate in the seat colour), clay tea cups (bhar: terracotta lip, glaze in the seat colour, milk tea), glass marbles, sewing buttons, scallop shells (jhinuk). All are SVG at the origin, about 0.35 board units across, so moves, jumps, captures and reduced motion animate them like pebbles.
 - **Seats stay distinct in every set:** the seat colour is always the largest area of the piece and the seat mark (dot, ring, cross, diamond) sits in the middle, so protanopia and deuteranopia read the same as with pebbles. The food on the plate also differs per seat. No coins, chips, cowries or anything money-like (cowries were money in Bengal).
+- **Bagh-chal** draws its own pieces in every set: an orange striped tiger face and a cream goat face with horns (`Tiger`, `Goat` in `guti.tsx`). The two differ in shape and lightness, so they carry no seat mark.
 - Static pictures (`BoardArt`, the landing hero, share cards, the pre-drawn WebPs) always use the default look.
 
 ## Game setup and the board screen

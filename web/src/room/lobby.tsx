@@ -132,7 +132,7 @@ function SeatRow({
   return (
     <li className="flex flex-col gap-2 border-t border-charcoal/10 pt-3 first:border-0 first:pt-0 sm:flex-row sm:items-center">
       <span className="flex min-w-0 flex-1 items-center gap-3">
-        <SeatPip seat={seat} />
+        <SeatPip seat={seat} board={board} />
         <span className="min-w-0">
           <span className="block font-display font-extrabold">{colour}</span>
           <span className={cn('block truncate text-sm', info.kind === 'empty' && 'opacity-70')}>

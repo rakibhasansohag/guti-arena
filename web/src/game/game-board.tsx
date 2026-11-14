@@ -18,6 +18,7 @@ import {
   countPieces,
   goatsTaken,
   legalMoves,
+  type BoardId,
   type GameState,
   type Move,
   type PointId,
@@ -224,6 +225,7 @@ export function GameBoard({
               seat={s}
               info={seats[s]}
               name={name(s)}
+              board={state.board}
               note={note(s)}
               out={!bagh && counts[s] === 0}
               active={state.winner === null && state.turn === s}
@@ -255,7 +257,7 @@ export function GameBoard({
             <defs>
               {SEATS.map((s) => (
                 <g key={s} id={`pebble-${s}-${uid}`}>
-                  <Guti set={look.pieces} seat={s} />
+                  <Guti set={look.pieces} seat={s} board={state.board} />
                 </g>
               ))}
             </defs>
@@ -429,7 +431,9 @@ function SeatPanel({
   out,
   active,
   deadline,
+  board,
 }: {
+  board: BoardId | undefined;
   seat: Seat;
   info: SeatInfo | undefined;
   name: string;
@@ -453,7 +457,7 @@ function SeatPanel({
         aria-hidden="true"
         className="size-10 shrink-0 overflow-visible sm:size-12"
       >
-        <Guti set={pieces} seat={seat} />
+        <Guti set={pieces} seat={seat} board={board} />
         {active && deadline !== null && <TimerRing key={deadline} deadline={deadline} />}
       </svg>
       <span className="min-w-0 flex-1 leading-tight">

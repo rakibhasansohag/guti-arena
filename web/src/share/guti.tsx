@@ -1,4 +1,4 @@
-import type { PieceSetId, Seat } from '@guti-arena/engine';
+import type { BoardId, PieceSetId, Seat } from '@guti-arena/engine';
 import { Pebble, SeatMark } from './board-art.tsx';
 import { SEAT_FILL } from './seat-colours.ts';
 
@@ -160,10 +160,81 @@ function Shell({ seat }: { seat: Seat }) {
   );
 }
 
+/** Bagh-chal's tiger: an orange face with stripes, seen head on. */
+function Tiger() {
+  return (
+    <>
+      <Shadow />
+      <circle cx={-0.23} cy={-0.25} r={0.11} fill="#E8891C" stroke={INK} strokeWidth={0.035} />
+      <circle cx={0.23} cy={-0.25} r={0.11} fill="#E8891C" stroke={INK} strokeWidth={0.035} />
+      <circle r={0.34} fill="#E8891C" stroke={INK} strokeWidth={0.04} />
+      <path
+        d="M0-.33V-.2M-.11-.31L-.08-.2M.11-.31L.08-.2M-.33-.02H-.21M.33-.02H.21M-.31.1L-.2.07M.31.1L.2.07"
+        stroke={INK}
+        strokeWidth={0.05}
+        strokeLinecap="round"
+      />
+      <ellipse cy={0.14} rx={0.17} ry={0.13} fill="#FBEFD9" />
+      <circle cx={-0.12} cy={-0.06} r={0.04} fill={INK} />
+      <circle cx={0.12} cy={-0.06} r={0.04} fill={INK} />
+      <path d="M-.05.08H.05L0 .14Z" fill={INK} />
+      <path
+        d="M0 .14V.2M-.07.22Q0 .26 .07.22"
+        fill="none"
+        stroke={INK}
+        strokeWidth={0.025}
+        strokeLinecap="round"
+      />
+    </>
+  );
+}
+
+/** Bagh-chal's goat: a cream face with horns and floppy ears. */
+function Goat() {
+  return (
+    <>
+      <Shadow />
+      <path
+        d="M-.12-.26Q-.26-.42-.36-.3M.12-.26Q.26-.42.36-.3"
+        fill="none"
+        stroke="#6B4423"
+        strokeWidth={0.07}
+        strokeLinecap="round"
+      />
+      <ellipse
+        cx={-0.33}
+        cy={-0.02}
+        rx={0.12}
+        ry={0.07}
+        fill="#E6DCC4"
+        stroke={INK}
+        strokeWidth={0.035}
+        transform="rotate(25 -0.33 -0.02)"
+      />
+      <ellipse
+        cx={0.33}
+        cy={-0.02}
+        rx={0.12}
+        ry={0.07}
+        fill="#E6DCC4"
+        stroke={INK}
+        strokeWidth={0.035}
+        transform="rotate(-25 0.33 -0.02)"
+      />
+      <ellipse rx={0.27} ry={0.33} fill="#F7F4EC" stroke={INK} strokeWidth={0.05} />
+      <ellipse cy={0.19} rx={0.13} ry={0.09} fill="#E9B9A8" />
+      <circle cx={-0.11} cy={-0.05} r={0.04} fill={INK} />
+      <circle cx={0.11} cy={-0.05} r={0.04} fill={INK} />
+      <path d="M-.04.17H.04" stroke={INK} strokeWidth={0.03} strokeLinecap="round" />
+    </>
+  );
+}
+
 const SETS = { foods: Food, bhar: Bhar, marbles: Marble, buttons: Button, shells: Shell } as const;
 
-/** One piece of a set at the origin. */
-export function Guti({ set, seat }: { set: PieceSetId; seat: Seat }) {
+/** One piece of a set at the origin. In Bagh-chal (`board`) the sides are tigers and goats in every set. */
+export function Guti({ set, seat, board }: { set: PieceSetId; seat: Seat; board?: BoardId }) {
+  if (board === 'bagh') return seat === 0 ? <Tiger /> : <Goat />;
   if (set === 'pebbles') return <Pebble seat={seat} />;
   const Piece = SETS[set];
   return <Piece seat={seat} />;

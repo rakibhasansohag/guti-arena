@@ -79,7 +79,7 @@ export function BoardPreview({
       {board.seats.flatMap((seat: Seat) =>
         board.start[seat].map((p) => (
           <g key={p} transform={`translate(${pos[p]!.x} ${pos[p]!.y})`}>
-            <Guti set={look.pieces} seat={seat} />
+            <Guti set={look.pieces} seat={seat} board={id} />
           </g>
         )),
       )}

@@ -173,7 +173,7 @@ function SetupCard({
           {seatsOf(setup).map((seat) => (
             <li key={seat} className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <span className="flex w-36 items-center gap-2 font-display font-extrabold">
-                <SeatPip seat={seat} />
+                <SeatPip seat={seat} board={setup.board} />
                 {seatName(seat)}
               </span>
               <div
@@ -260,7 +260,7 @@ function EndCard({
         <ul className="mt-4 flex flex-col gap-2">
           {state.seats.map((s) => (
             <li key={s} className={cn('flex items-center gap-3', s === w && 'font-extrabold')}>
-              <SeatPip seat={s} />
+              <SeatPip seat={s} board={state.board} />
               <span className="flex-1 truncate font-display font-extrabold">{name(s)}</span>
               <span>
                 {t(counts[s] === 1 ? 'badge.onePiece' : 'badge.pieces', { n: num(counts[s]) })}

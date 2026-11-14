@@ -64,13 +64,16 @@ for (const [route, file] of pages) {
 // The guard scripts embed the hashed entry file name, so their CSP hashes change every build.
 // Turnstile needs its own script, frames and connections (developers.cloudflare.com/turnstile/reference/content-security-policy/).
 const TURNSTILE = 'https://challenges.cloudflare.com';
+// Cloudflare Web Analytics, which Cloudflare injects into every page on this zone.
+const INSIGHTS = 'https://static.cloudflareinsights.com';
+const INSIGHTS_REPORT = 'https://cloudflareinsights.com';
 const csp = [
   "default-src 'self'",
-  `script-src 'self' ${scriptHashes.join(' ')} ${TURNSTILE}`,
+  `script-src 'self' ${scriptHashes.join(' ')} ${TURNSTILE} ${INSIGHTS}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  `connect-src 'self' ${TURNSTILE}`,
+  `connect-src 'self' ${TURNSTILE} ${INSIGHTS_REPORT}`,
   `frame-src ${TURNSTILE}`,
   "worker-src 'self'",
   "media-src 'self'",

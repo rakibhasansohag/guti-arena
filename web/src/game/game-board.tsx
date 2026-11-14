@@ -11,10 +11,10 @@ import {
 import { AnimatePresence, MotionConfig, motion, type Transition } from 'motion/react';
 import { Bot } from 'lucide-react';
 import {
-  LINES,
-  POINTS,
+  boardOf,
   countPieces,
   legalMoves,
+  type Board,
   type GameState,
   type Move,
   type PointId,
@@ -30,7 +30,6 @@ import { play } from './sound.ts';
 import { track, type Tracked } from './track.ts';
 import { useNum } from './use-num.ts';
 
-const VIEW = '-2.6 -2.6 11.2 11.2';
 const SEATS: Seat[] = [0, 1, 2, 3];
 /** The server's turn length (worker/src/room-logic.ts); the timer ring drains from here. */
 const TURN_MS = 30_000;
@@ -51,16 +50,23 @@ export interface GameBoardProps {
 }
 
 /** Board positions with `bottom` turned to the south edge. */
-function positions(bottom: Seat | null): Pos {
+function positions(board: Board, bottom: Seat | null): Pos {
   const turns = bottom === null ? 0 : (2 - bottom + 4) % 4; // quarter turns clockwise
   const pos: Pos = {};
-  for (const p of POINTS) {
+  for (const p of board.points) {
     let [x, y] = [p.x, p.y];
-    for (let k = 0; k < turns; k++) [x, y] = [6 - y, x];
+    for (let k = 0; k < turns; k++) [x, y] = [board.size - 1 - y, x];
     pos[p.id] = { x, y };
   }
   return pos;
 }
+
+/**
+ * Half the view box per board, from the grid centre. The two-player boards are tall and narrow,
+ * so their badges stand upright in the free columns beside the board.
+ */
+const HALF_VIEW = { four: 5.6, classic: 4.6, quick: 4.6 } as const;
+const BADGE_SIZE = { wide: 'h-[16%] w-[31%]', tall: 'h-[30%] w-[22%]' } as const;
 
 /** Badge corner per screen side (0 top, 1 right, 2 bottom, 3 left), beside that side's triangle. */
 const CORNER = [
@@ -85,14 +91,18 @@ export function GameBoard({
   const num = useNum();
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const svgRef = useRef<SVGSVGElement>(null);
-  const pos = useMemo(() => positions(bottomSeat), [bottomSeat]);
+  const board = boardOf(state);
+  const pos = useMemo(() => positions(board, bottomSeat), [board, bottomSeat]);
+  const mid = (board.size - 1) / 2;
+  const half = HALF_VIEW[board.id];
+  const badge = board.seats.length > 2 ? 'wide' : 'tall';
   const turns = bottomSeat === null ? 0 : (2 - bottomSeat + 4) % 4;
 
   // Piece identities across states, so pebbles slide rather than blink.
   // Updated while rendering when the pieces change (React's "adjust state on prop change" pattern).
-  let [tracked, setTracked] = useState(() => track(null, state.pieces));
+  let [tracked, setTracked] = useState(() => track(null, state.pieces, board));
   if (tracked.pieces !== state.pieces) {
-    tracked = track(tracked, state.pieces);
+    tracked = track(tracked, state.pieces, board);
     setTracked(tracked);
   }
 
@@ -106,7 +116,7 @@ export function GameBoard({
 
   const [focus, setFocus] = useState<PointId | null>(null);
   const [keyboard, setKeyboard] = useState(false);
-  const rovingPoint = focus ?? selected ?? 'g-3-3';
+  const rovingPoint = focus ?? selected ?? board.centre;
 
   // Sounds follow what the board shows.
   const prevTurn = useRef<Seat | null>(null);
@@ -214,7 +224,7 @@ export function GameBoard({
         <div className="relative aspect-square w-full">
           <svg
             ref={svgRef}
-            viewBox={VIEW}
+            viewBox={`${mid - half} ${mid - half} ${2 * half} ${2 * half}`}
             className="block size-full touch-manipulation select-none"
             onClick={onClick}
             role="group"
@@ -236,18 +246,18 @@ export function GameBoard({
             </defs>
 
             <rect
-              x="-2.55"
-              y="-2.55"
-              width="11.1"
-              height="11.1"
+              x={mid - half + 0.05}
+              y={mid - half + 0.05}
+              width={2 * half - 0.1}
+              height={2 * half - 0.1}
               rx="0.5"
               fill="var(--color-earth)"
             />
             <rect
-              x="-2.55"
-              y="-2.55"
-              width="11.1"
-              height="11.1"
+              x={mid - half + 0.05}
+              y={mid - half + 0.05}
+              width={2 * half - 0.1}
+              height={2 * half - 0.1}
               rx="0.5"
               fill={`url(#earth-${uid})`}
               opacity="0.45"
@@ -260,13 +270,13 @@ export function GameBoard({
               strokeWidth={0.1}
               strokeLinecap="round"
             >
-              {LINES.map((line) => {
+              {board.lines.map((line) => {
                 const a = pos[line[0]!]!;
                 const b = pos[line[line.length - 1]!]!;
                 return <line key={line.join()} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />;
               })}
             </g>
-            {POINTS.map((p) => (
+            {board.points.map((p) => (
               <circle
                 key={p.id}
                 cx={pos[p.id]!.x}
@@ -337,7 +347,7 @@ export function GameBoard({
             )}
 
             {/* One tab stop; arrow keys move between points, Enter selects or moves. */}
-            {POINTS.map((p) => (
+            {board.points.map((p) => (
               <circle
                 key={`hit-${p.id}`}
                 data-point={p.id}
@@ -370,6 +380,7 @@ export function GameBoard({
               active={state.winner === null && state.turn === s}
               deadline={state.turn === s ? turnDeadline : null}
               corner={CORNER[(s + turns) % 4]!}
+              layout={badge}
             />
           ))}
         </div>
@@ -456,6 +467,7 @@ function SeatBadge({
   active,
   deadline,
   corner,
+  layout,
 }: {
   seat: Seat;
   info: SeatInfo | undefined;
@@ -464,6 +476,7 @@ function SeatBadge({
   active: boolean;
   deadline: number | null;
   corner: string;
+  layout: keyof typeof BADGE_SIZE;
 }) {
   const t = useT('game');
   const num = useNum();
@@ -471,13 +484,17 @@ function SeatBadge({
   return (
     <div
       className={cn(
-        'absolute flex h-[16%] w-[31%] items-center gap-2 rounded-clay bg-chalk/90 px-2 shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-3',
+        'absolute flex items-center gap-2 rounded-clay bg-chalk/90 px-2 shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-3',
+        BADGE_SIZE[layout],
+        layout === 'tall' && 'flex-col justify-center text-center sm:gap-2',
         corner,
         active && '-translate-y-0.5 shadow-clay-lift ring-[3px]',
         out && 'opacity-50',
       )}
     >
-      <span className="relative aspect-square h-[62%] shrink-0">
+      <span
+        className={cn('relative aspect-square shrink-0', layout === 'tall' ? 'h-[36%]' : 'h-[62%]')}
+      >
         <svg viewBox="-0.6 -0.6 1.2 1.2" aria-hidden="true" className="size-full overflow-visible">
           <circle
             r={0.34}
@@ -495,8 +512,13 @@ function SeatBadge({
           {active && deadline !== null && <TimerRing key={deadline} deadline={deadline} />}
         </svg>
       </span>
-      <span className="min-w-0 leading-tight">
-        <span className="flex items-center gap-1.5">
+      <span className={cn('min-w-0 leading-tight', layout === 'tall' && 'w-full')}>
+        <span
+          className={cn(
+            'flex items-center gap-1.5',
+            layout === 'tall' && 'flex-wrap justify-center gap-1',
+          )}
+        >
           <span className="truncate font-display text-sm font-extrabold sm:text-base 3xl:text-lg">
             {name}
           </span>

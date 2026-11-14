@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import {
+  BOARDS,
   applyMove,
   countPieces,
   createGame,
   endChain,
   type AiLevel,
+  type BoardId,
   type GameState,
   type Move,
   type Seat,
@@ -15,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { askAi } from '@/game/ask-ai';
 import { useNum } from '@/game/use-num';
-import { GameBoard, GameHeader, SEGMENT, SeatPip } from '@/game';
+import { BoardPicker, GameBoard, GameHeader, SEGMENT, SeatPip } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { SEAT_COLOUR_NAME, Seo } from '@/share';
@@ -32,14 +34,20 @@ const SEATS_FOR: Record<Count, Seat[]> = { 2: [0, 2], 3: [0, 1, 2], 4: [0, 1, 2,
 const AI_DELAY_MS = 700;
 
 interface Setup {
+  board: BoardId;
+  /** Players on the four-colour board; the two-player boards always seat north and south. */
   count: Count;
   kinds: Record<Seat, Kind>;
 }
 
 const DEFAULT_SETUP: Setup = {
+  board: 'four',
   count: 2,
   kinds: { 0: 'medium', 1: 'medium', 2: 'human', 3: 'medium' },
 };
+
+const seatsOf = (s: Setup): Seat[] =>
+  s.board === 'four' ? SEATS_FOR[s.count] : BOARDS[s.board].seats;
 
 function apply(s: GameState, choice: Move | 'end-chain'): GameState {
   return choice === 'end-chain' ? endChain(s) : applyMove(s, choice);
@@ -50,7 +58,7 @@ export default function Page() {
   const [setup, setSetup] = useState<Setup>(DEFAULT_SETUP);
   const [state, setState] = useState<GameState | null>(null);
 
-  const seats = SEATS_FOR[setup.count];
+  const seats = seatsOf(setup);
   const humans = seats.filter((s) => setup.kinds[s] === 'human');
   const turnKind = state ? setup.kinds[state.turn] : 'human';
 
@@ -110,7 +118,7 @@ export default function Page() {
                   state={state}
                   seatInfo={seatInfo}
                   solo={solo}
-                  onRematch={() => setState(createGame(seats))}
+                  onRematch={() => setState(createGame(seats, setup.board))}
                   onSetup={() => setState(null)}
                 />
               )}
@@ -120,7 +128,7 @@ export default function Page() {
           <SetupCard
             setup={setup}
             onChange={setSetup}
-            onStart={() => setState(createGame(seats))}
+            onStart={() => setState(createGame(seats, setup.board))}
           />
         )}
       </main>
@@ -147,28 +155,34 @@ function SetupCard({
       <p className="mt-2 max-w-prose text-base sm:text-lg">{t('setup.lead')}</p>
 
       <div className="mt-6 rounded-clay bg-card p-4 shadow-clay sm:p-6 3xl:p-8">
-        <h2 className="font-display text-lg font-extrabold">{t('setup.players')}</h2>
-        <div
-          role="group"
-          aria-label={t('setup.players')}
-          className="mt-2 flex gap-1 rounded-full bg-chalk/70 p-1"
-        >
-          {([2, 3, 4] as const).map((n) => (
-            <button
-              key={n}
-              type="button"
-              aria-pressed={setup.count === n}
-              onClick={() => onChange({ ...setup, count: n })}
-              className={SEGMENT}
+        <BoardPicker value={setup.board} onChange={(board) => onChange({ ...setup, board })} />
+
+        {setup.board === 'four' && (
+          <>
+            <h2 className="mt-6 font-display text-lg font-extrabold">{t('setup.players')}</h2>
+            <div
+              role="group"
+              aria-label={t('setup.players')}
+              className="mt-2 flex gap-1 rounded-full bg-chalk/70 p-1"
             >
-              {t('setup.count', { n: num(n) })}
-            </button>
-          ))}
-        </div>
+              {([2, 3, 4] as const).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-pressed={setup.count === n}
+                  onClick={() => onChange({ ...setup, count: n })}
+                  className={SEGMENT}
+                >
+                  {t('setup.count', { n: num(n) })}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <h2 className="mt-6 font-display text-lg font-extrabold">{t('setup.seats')}</h2>
         <ul className="mt-2 flex flex-col gap-3">
-          {SEATS_FOR[setup.count].map((seat) => (
+          {seatsOf(setup).map((seat) => (
             <li key={seat} className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <span className="flex w-36 items-center gap-2 font-display font-extrabold">
                 <SeatPip seat={seat} />

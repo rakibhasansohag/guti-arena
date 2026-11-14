@@ -1,34 +1,17 @@
-import { LINES, NEIGHBOURS, startPoints } from './board.ts';
-import type { GameState, Move, PointId, Seat } from './types.ts';
+import { BOARDS, boardOf, type Board } from './board.ts';
+import type { BoardId, GameState, Move, PointId, Seat } from './types.ts';
 
 /** Quiet rounds (no capture) after which the game ends on piece count. */
 export const QUIET_ROUND_LIMIT = 40;
 
-interface Jump {
-  over: PointId;
-  to: PointId;
+/** The point jumped over by `m` on `board`, or null when `m` is a plain step. */
+export function jumpedPoint(m: Move, board: Board): PointId | null {
+  return board.jumps[m.from]?.find((j) => j.to === m.to)?.over ?? null;
 }
 
-/** Every jump from each point: three consecutive points on one line, either direction. */
-const JUMPS: Record<PointId, Jump[]> = Object.fromEntries(
-  Object.keys(NEIGHBOURS).map((id) => [id, []]),
-);
-for (const line of LINES) {
-  for (let i = 0; i + 2 < line.length; i++) {
-    const [a, b, c] = [line[i]!, line[i + 1]!, line[i + 2]!];
-    JUMPS[a]!.push({ over: b, to: c });
-    JUMPS[c]!.push({ over: b, to: a });
-  }
-}
-
-/** The point jumped over by `m`, or null when `m` is a plain step. */
-export function jumpedPoint(m: Move): PointId | null {
-  return JUMPS[m.from]?.find((j) => j.to === m.to)?.over ?? null;
-}
-
-function jumpsFrom(pieces: Record<PointId, Seat>, from: PointId, seat: Seat): Move[] {
+function jumpsFrom(board: Board, pieces: Record<PointId, Seat>, from: PointId, seat: Seat): Move[] {
   const out: Move[] = [];
-  for (const { over, to } of JUMPS[from] ?? []) {
+  for (const { over, to } of board.jumps[from] ?? []) {
     const victim = pieces[over];
     if (victim !== undefined && victim !== seat && pieces[to] === undefined) out.push({ from, to });
   }
@@ -36,22 +19,22 @@ function jumpsFrom(pieces: Record<PointId, Seat>, from: PointId, seat: Seat): Mo
 }
 
 /** Whether `seat` has any step or jump, stopping at the first one. */
-function hasMove(pieces: Record<PointId, Seat>, seat: Seat): boolean {
+function hasMove(board: Board, pieces: Record<PointId, Seat>, seat: Seat): boolean {
   for (const from in pieces) {
     if (pieces[from] !== seat) continue;
-    for (const to of NEIGHBOURS[from]!) if (pieces[to] === undefined) return true;
-    if (jumpsFrom(pieces, from, seat).length > 0) return true;
+    for (const to of board.neighbours[from]!) if (pieces[to] === undefined) return true;
+    if (jumpsFrom(board, pieces, from, seat).length > 0) return true;
   }
   return false;
 }
 
 /** All moves for `seat` with no chain in progress: steps and jumps. */
-function movesFor(pieces: Record<PointId, Seat>, seat: Seat): Move[] {
+function movesFor(board: Board, pieces: Record<PointId, Seat>, seat: Seat): Move[] {
   const out: Move[] = [];
   for (const from in pieces) {
     if (pieces[from] !== seat) continue;
-    for (const to of NEIGHBOURS[from]!) if (pieces[to] === undefined) out.push({ from, to });
-    out.push(...jumpsFrom(pieces, from, seat));
+    for (const to of board.neighbours[from]!) if (pieces[to] === undefined) out.push({ from, to });
+    out.push(...jumpsFrom(board, pieces, from, seat));
   }
   return out;
 }
@@ -70,20 +53,32 @@ function winnerByCount(s: GameState): Seat | 'draw' {
   return leaders.length === 1 ? leaders[0]! : 'draw';
 }
 
-export function createGame(seats: Seat[]): GameState {
+/** A new game on `board`. Every seat must be one the board has; two-player boards use seats 0 and 2. */
+export function createGame(seats: Seat[], board: BoardId = 'four'): GameState {
   const inPlay = [...new Set(seats)].sort((a, b) => a - b);
   if (inPlay.length < 2 || inPlay.length !== seats.length) {
     throw new Error('need 2 to 4 distinct seats');
   }
+  const b = BOARDS[board];
+  if (!inPlay.every((seat) => b.seats.includes(seat))) throw new Error('seat not on this board');
   const pieces: Record<PointId, Seat> = {};
-  for (const seat of inPlay) for (const p of startPoints(seat)) pieces[p] = seat;
-  return { seats: inPlay, pieces, turn: inPlay[0]!, chainFrom: null, quietRounds: 0, winner: null };
+  for (const seat of inPlay) for (const p of b.start[seat]) pieces[p] = seat;
+  return {
+    board,
+    seats: inPlay,
+    pieces,
+    turn: inPlay[0]!,
+    chainFrom: null,
+    quietRounds: 0,
+    winner: null,
+  };
 }
 
 export function legalMoves(s: GameState): Move[] {
   if (s.winner !== null) return [];
-  if (s.chainFrom !== null) return jumpsFrom(s.pieces, s.chainFrom, s.turn);
-  return movesFor(s.pieces, s.turn);
+  const board = boardOf(s);
+  if (s.chainFrom !== null) return jumpsFrom(board, s.pieces, s.chainFrom, s.turn);
+  return movesFor(board, s.pieces, s.turn);
 }
 
 /**
@@ -100,7 +95,7 @@ function passTurn(s: GameState): void {
   for (let k = 1; k <= n; k++) {
     if (start + k >= n) wrapped = true;
     const seat = s.seats[(start + k) % n]!;
-    if (counts[seat] > 0 && hasMove(s.pieces, seat)) {
+    if (counts[seat] > 0 && hasMove(boardOf(s), s.pieces, seat)) {
       s.turn = seat;
       if (wrapped) s.quietRounds++;
       if (s.quietRounds >= QUIET_ROUND_LIMIT) s.winner = winnerByCount(s);
@@ -125,7 +120,8 @@ export function applyLegalMove(s: GameState, m: Move): GameState {
   next.pieces[m.to] = s.turn;
   delete next.pieces[m.from];
 
-  const over = jumpedPoint(m);
+  const board = boardOf(s);
+  const over = jumpedPoint(m, board);
   if (over === null) {
     passTurn(next);
     return next;
@@ -141,7 +137,7 @@ export function applyLegalMove(s: GameState, m: Move): GameState {
     return next;
   }
   // The same piece may keep jumping; if it cannot, the turn passes on its own.
-  if (jumpsFrom(next.pieces, m.to, s.turn).length > 0) next.chainFrom = m.to;
+  if (jumpsFrom(board, next.pieces, m.to, s.turn).length > 0) next.chainFrom = m.to;
   else passTurn(next);
   return next;
 }

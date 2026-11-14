@@ -44,6 +44,7 @@ Run one package with `pnpm --filter <name> <script>`, e.g. `pnpm --filter @guti-
 ## The game
 
 - **Board:** a 7 by 7 grid of points joined by horizontal and vertical lines only, plus a triangle on each side. Each triangle's apex is the grid's mid-edge point; outside the grid it has a middle row of 3 points and a base row of 3 points. Total 73 points.
+- **Other boards:** the four-colour board is the default (`board: 'four'`). Two two-player boards (blue north against white south) can be picked on `/play` and by the room host (`set-board`): `classic`, a 5 by 5 grid with alternating diagonals plus a full-width triangle north and south whose sides continue the diagonals (37 points, 16 pieces each, middle row starts empty), and `quick`, the same grid without triangles (25 points, 12 each, centre empty). `GameState.board` names the board; a missing value means the four-colour board. Rules and AI read the board from the state (`boardOf`).
 - **Seats, clockwise:** 0 north (blue), 1 east (yellow), 2 south (white), 3 west (red).
 - **Pieces:** 18 per seat: the 6 triangle points plus 12 grid points. Only the centre point starts empty when all four seats play. With fewer seats, unused seats' points start empty; two players sit at seats 0 and 2 by default.
 - **Move:** one step along a line to an adjacent empty point.

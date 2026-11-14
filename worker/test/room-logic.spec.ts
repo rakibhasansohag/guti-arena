@@ -164,6 +164,53 @@ describe('playing', () => {
   });
 });
 
+describe('boards', () => {
+  it('lets only the host pick a board in the lobby and clears seats the board lacks', () => {
+    const r = lobby();
+    handle(r, 'b', { t: 'sit', seat: 3 }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 1, level: 'easy' }, T0);
+    expect(view(r).board).toBe('four');
+    expect(handle(r, 'b', { t: 'set-board', board: 'classic' }, T0)).toBe('not-host');
+    expect(handle(r, 'a', { t: 'set-board', board: 'classic' }, T0)).toBeNull();
+    expect(view(r).board).toBe('classic');
+    expect(r.players.find((p) => p.id === 'b')!.seat).toBeNull();
+    expect(r.ai).toEqual([null, null, null, null]);
+    expect(handle(r, 'b', { t: 'sit', seat: 1 }, T0)).toBe('seat-off-board');
+    expect(handle(r, 'a', { t: 'set-ai', seat: 3, level: 'easy' }, T0)).toBe('seat-off-board');
+    expect(handle(r, 'b', { t: 'sit', seat: 2 }, T0)).toBeNull();
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
+    expect(r.game).toMatchObject({ board: 'classic', seats: [0, 2] });
+    expect(Object.keys(r.game!.pieces)).toHaveLength(32);
+    expect(handle(r, 'a', { t: 'set-board', board: 'four' }, T0)).toBe('not-lobby');
+  });
+
+  it('keeps the board for a rematch and plays a whole quick AI game', () => {
+    const r = newRoom('BCDFG');
+    handle(r, 'a', { t: 'join', playerId: 'a', name: 'A' }, T0);
+    handle(r, 'a', { t: 'set-board', board: 'quick' }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 0, level: 'medium' }, T0);
+    handle(r, 'a', { t: 'set-ai', seat: 2, level: 'easy' }, T0);
+    handle(r, 'a', { t: 'start' }, T0);
+    let now = T0;
+    for (let i = 0; i < 5000 && r.phase === 'playing'; i++) {
+      now = botDueAt(r)!;
+      tick(r, now);
+    }
+    expect(r.phase).toBe('ended');
+    expect(r.game!.board).toBe('quick');
+    handle(r, 'a', { t: 'rematch' }, now);
+    expect(view(r).board).toBe('quick');
+  });
+
+  it('treats rooms saved before boards existed as the four-colour board', () => {
+    const r = lobby();
+    delete r.board;
+    expect(view(r).board).toBe('four');
+    expect(handle(r, 'a', { t: 'start' }, T0)).toBeNull();
+    expect(r.game!.board).toBe('four');
+  });
+});
+
 describe('input', () => {
   it('parses only well-formed messages', () => {
     expect(parseMessage('{"t":"sit","seat":2}')).toEqual({ t: 'sit', seat: 2 });
@@ -176,6 +223,11 @@ describe('input', () => {
     });
     expect(parseMessage('{"t":"join","playerId":"","name":"x"}')).toBeNull();
     expect(parseMessage('{"t":"stand","extra":1}')).toEqual({ t: 'stand' });
+    expect(parseMessage('{"t":"set-board","board":"classic"}')).toEqual({
+      t: 'set-board',
+      board: 'classic',
+    });
+    expect(parseMessage('{"t":"set-board","board":"toString"}')).toBeNull();
     expect(parseMessage('null')).toBeNull();
     expect(parseMessage('nope')).toBeNull();
   });

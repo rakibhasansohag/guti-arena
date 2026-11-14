@@ -79,6 +79,7 @@ export default {
   'error.not-playing': 'The game is not running.',
   'error.not-ended': 'The game has not ended yet.',
   'error.seat-taken': 'That seat was just taken.',
+  'error.seat-off-board': 'That seat is not on this board.',
   'error.need-two-seats': 'At least two seats must be filled.',
   'error.not-your-turn': "It's not your turn.",
   'error.illegal-move': 'That move is not allowed.',

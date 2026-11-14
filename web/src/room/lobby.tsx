@@ -1,9 +1,16 @@
 import { useState, type FormEvent } from 'react';
 import { Check, Share2 } from 'lucide-react';
-import type { AiLevel, ClientMessage, RoomState, Seat, SeatInfo } from '@guti-arena/engine';
+import {
+  BOARDS,
+  type AiLevel,
+  type ClientMessage,
+  type RoomState,
+  type Seat,
+  type SeatInfo,
+} from '@guti-arena/engine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SEGMENT, SeatPip } from '@/game';
+import { BoardPicker, SEGMENT, SeatPip } from '@/game';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { savedName } from '@/net';
@@ -182,7 +189,10 @@ export function Lobby({
 }) {
   const t = useT('room');
   const isHost = room.hostId === you.playerId;
-  const filled = room.seats.filter((s) => s.kind !== 'empty').length;
+  // Rooms from an older server have no board: the four-colour board.
+  const board = BOARDS[room.board ?? 'four'];
+  const seats = room.seats.filter((s) => board.seats.includes(s.seat));
+  const filled = seats.filter((s) => s.kind !== 'empty').length;
   return (
     <section className={cn(WRAP, 'max-w-3xl py-6 sm:py-10 4xl:max-w-5xl')}>
       <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-4xl 3xl:text-5xl">
@@ -196,9 +206,13 @@ export function Lobby({
       </div>
 
       <div className={cn(CARD, 'mt-6')}>
-        <h2 className="font-display text-lg font-extrabold">{t('lobby.seats')}</h2>
+        <BoardPicker
+          value={board.id}
+          onChange={isHost ? (id) => send({ t: 'set-board', board: id }) : null}
+        />
+        <h2 className="mt-6 font-display text-lg font-extrabold">{t('lobby.seats')}</h2>
         <ul className="mt-3 flex flex-col gap-3">
-          {room.seats.map((s) => (
+          {seats.map((s) => (
             <SeatRow key={s.seat} info={s} mine={you.seat === s.seat} isHost={isHost} send={send} />
           ))}
         </ul>

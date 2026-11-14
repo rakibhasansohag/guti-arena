@@ -1,7 +1,4 @@
-import { POINTS, jumpedPoint, type PointId, type Seat } from '@guti-arena/engine';
-
-const AT = Object.fromEntries(POINTS.map((p) => [p.id, p]));
-const dist = (a: PointId, b: PointId) => Math.hypot(AT[a]!.x - AT[b]!.x, AT[a]!.y - AT[b]!.y);
+import { jumpedPoint, type Board, type PointId, type Seat } from '@guti-arena/engine';
 
 export interface Tracked {
   pieces: Record<PointId, Seat>;
@@ -21,7 +18,7 @@ let seq = 0;
  * The board state has no piece identities, so a moved piece is matched to the nearest vacated
  * point of the same seat. A big difference (a new game) gets fresh keys and no move.
  */
-export function track(prev: Tracked | null, pieces: Record<PointId, Seat>): Tracked {
+export function track(prev: Tracked | null, pieces: Record<PointId, Seat>, board: Board): Tracked {
   const fresh = (): Tracked => ({
     pieces,
     keys: Object.fromEntries(Object.keys(pieces).map((id) => [id, seq++])),
@@ -35,6 +32,8 @@ export function track(prev: Tracked | null, pieces: Record<PointId, Seat>): Trac
   const removed = Object.keys(prev.pieces).filter((id) => prev.pieces[id] !== pieces[id]);
   if (added.length + removed.length > 8) return fresh();
 
+  const at = Object.fromEntries(board.points.map((p) => [p.id, p]));
+  const dist = (a: PointId, b: PointId) => Math.hypot(at[a]!.x - at[b]!.x, at[a]!.y - at[b]!.y);
   const keys: Record<PointId, number> = {};
   for (const id of Object.keys(pieces)) if (!added.includes(id)) keys[id] = prev.keys[id]!;
   const moved: Tracked['moved'] = {};
@@ -49,7 +48,7 @@ export function track(prev: Tracked | null, pieces: Record<PointId, Seat>): Trac
     }
     removed.splice(removed.indexOf(from), 1);
     keys[to] = prev.keys[from]!;
-    moved[keys[to]] = { from, jump: jumpedPoint({ from, to }) !== null };
+    moved[keys[to]] = { from, jump: jumpedPoint({ from, to }, board) !== null };
     lastMove = { from, to };
   }
   return { pieces, keys, moved, captured: removed, lastMove };

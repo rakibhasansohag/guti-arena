@@ -17,7 +17,15 @@ export default {
 
   'setup.title': 'Play on this device',
   'setup.lead':
-    'Pick how many seats play, then make each seat a person or an AI. People take turns on this screen.',
+    'Pick a board and how many seats play, then make each seat a person or an AI. People take turns on this screen.',
+  'setup.board': 'Board',
+  'boards.four': 'Four colours',
+  'boards.four.hint': '7 by 7 grid with a triangle on every side. 2 to 4 players, 18 pieces each.',
+  'boards.classic': 'Classic',
+  'boards.classic.hint':
+    'The classic Sholo Guti board: 5 by 5 grid with diagonals and two triangles. 2 players, 16 pieces each.',
+  'boards.quick': 'Quick',
+  'boards.quick.hint': '5 by 5 grid with diagonals, no triangles. 2 players, 12 pieces each.',
   'setup.players': 'Players',
   'setup.count': '{n} players',
   'setup.seats': 'Seats',

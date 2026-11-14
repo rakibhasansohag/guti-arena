@@ -77,6 +77,7 @@ export default {
   'error.not-playing': 'খেলা এখন চলছে না।',
   'error.not-ended': 'খেলা এখনো শেষ হয়নি।',
   'error.seat-taken': 'আসনটি এইমাত্র কেউ নিয়ে নিয়েছে।',
+  'error.seat-off-board': 'এই বোর্ডে ওই আসন নেই।',
   'error.need-two-seats': 'অন্তত দুটি আসন ভরা থাকতে হবে।',
   'error.not-your-turn': 'এখন আপনার চাল নয়।',
   'error.illegal-move': 'এই চাল দেওয়া যায় না।',

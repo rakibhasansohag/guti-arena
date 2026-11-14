@@ -1,4 +1,4 @@
-import type { AiLevel, GameState, PointId, Seat } from './types.ts';
+import type { AiLevel, BoardId, GameState, PointId, Seat } from './types.ts';
 
 // HTTP
 //   POST /api/rooms           body CreateRoomRequest, returns CreateRoomResponse
@@ -24,6 +24,7 @@ export interface RoomState {
   code: string;
   phase: 'lobby' | 'playing' | 'ended';
   hostId: string;
+  board: BoardId; // the host picks it in the lobby
   seats: SeatInfo[]; // always 4 entries
   game: GameState | null;
   turnDeadline: number | null; // epoch ms
@@ -38,6 +39,7 @@ export type ClientMessage =
   | { t: 'sit'; seat: Seat }
   | { t: 'stand' }
   | { t: 'set-ai'; seat: Seat; level: AiLevel | null }
+  | { t: 'set-board'; board: BoardId } // host, lobby only; seats the board lacks are cleared
   | { t: 'start' }
   | { t: 'move'; from: PointId; to: PointId }
   | { t: 'end-chain' }

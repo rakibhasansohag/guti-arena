@@ -1,9 +1,12 @@
 import {
+  BOARDS,
   applyMove,
   chooseMove,
+  isBoardId,
   createGame,
   endChain,
   type AiLevel,
+  type BoardId,
   type ClientMessage,
   type GameState,
   type RoomState,
@@ -37,6 +40,7 @@ export interface Room {
   hostId: string;
   players: Player[]; // join order, used to pass the host on
   ai: (AiLevel | null)[]; // per seat
+  board?: BoardId; // missing in rooms saved before boards existed: 'four'
   game: GameState | null;
   turnDeadline: number | null;
 }
@@ -48,6 +52,7 @@ export function newRoom(code: string): Room {
     hostId: '',
     players: [],
     ai: [null, null, null, null],
+    board: 'four',
     game: null,
     turnDeadline: null,
   };
@@ -62,7 +67,7 @@ export function view(r: Room): RoomState {
     return { seat, kind: 'empty', name: '', connected: false, level: null };
   });
   const { code, phase, hostId, game, turnDeadline } = r;
-  return { code, phase, hostId, seats, game, turnDeadline };
+  return { code, phase, hostId, board: r.board ?? 'four', seats, game, turnDeadline };
 }
 
 const graphemes = new Intl.Segmenter();
@@ -102,6 +107,8 @@ export function parseMessage(raw: string): ClientMessage | null {
       return isSeat(m.seat) && (m.level === null || LEVELS.includes(m.level as AiLevel))
         ? { t: 'set-ai', seat: m.seat, level: m.level as AiLevel | null }
         : null;
+    case 'set-board':
+      return isBoardId(m.board) ? { t: 'set-board', board: m.board } : null;
     case 'move':
       return isStr(m.from, 16) && isStr(m.to, 16) ? { t: 'move', from: m.from, to: m.to } : null;
     case 'stand':
@@ -114,6 +121,7 @@ export function parseMessage(raw: string): ClientMessage | null {
   }
 }
 
+const onBoard = (r: Room, seat: Seat) => BOARDS[r.board ?? 'four'].seats.includes(seat);
 const seatTaken = (r: Room, seat: Seat) =>
   r.players.some((p) => p.seat === seat) || r.ai[seat] != null;
 
@@ -148,6 +156,7 @@ export function handle(
     case 'sit':
       if (r.phase !== 'lobby') return 'not-lobby';
       if (p.seat === m.seat) return null;
+      if (!onBoard(r, m.seat)) return 'seat-off-board';
       if (seatTaken(r, m.seat)) return 'seat-taken';
       p.seat = m.seat;
       return null;
@@ -158,15 +167,24 @@ export function handle(
     case 'set-ai':
       if (!isHost) return 'not-host';
       if (r.phase !== 'lobby') return 'not-lobby';
+      if (!onBoard(r, m.seat)) return 'seat-off-board';
       if (r.players.some((x) => x.seat === m.seat)) return 'seat-taken';
       r.ai[m.seat] = m.level;
+      return null;
+    case 'set-board':
+      if (!isHost) return 'not-host';
+      if (r.phase !== 'lobby') return 'not-lobby';
+      r.board = m.board;
+      // Players on seats the new board lacks stand up; AI there is removed.
+      for (const x of r.players) if (x.seat !== null && !onBoard(r, x.seat)) x.seat = null;
+      for (const seat of SEATS) if (!onBoard(r, seat)) r.ai[seat] = null;
       return null;
     case 'start': {
       if (!isHost) return 'not-host';
       if (r.phase !== 'lobby') return 'not-lobby';
       const filled = SEATS.filter((s) => seatTaken(r, s));
       if (filled.length < 2) return 'need-two-seats';
-      r.game = createGame(filled);
+      r.game = createGame(filled, r.board ?? 'four');
       r.phase = 'playing';
       r.turnDeadline = now + TURN_MS;
       return null;

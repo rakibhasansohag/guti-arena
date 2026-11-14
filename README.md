@@ -1,6 +1,6 @@
 # Guti Arena
 
-A free, open-source, browser-only version of four-colour Sholo Guti (ষোলো গুটি), the South Asian folk board game. Play on one device, against the computer, or online with friends in a private room. Bangla first, English too.
+Guti Arena is four-colour Sholo Guti (ষোলো গুটি), the folk board game from Bangladesh and eastern India, in the browser. Play on one device, against the computer, or online with friends in a private room. Bangla first, English too.
 
 ## Run it
 

@@ -134,9 +134,7 @@ export default function Landing() {
               {t('hero.title')}
             </h1>
             <p className="max-w-xl text-lg 3xl:text-xl">{t('hero.sub')}</p>
-            <p className="w-fit rounded-full bg-chalk/70 px-4 py-1.5 text-sm font-display font-extrabold shadow-clay">
-              {t('hero.fact')}
-            </p>
+            <p className="font-display text-base font-extrabold 3xl:text-lg">{t('hero.fact')}</p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild className={CTA}>
                 <Link to="/play">{t('cta.play')}</Link>

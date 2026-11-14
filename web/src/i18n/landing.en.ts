@@ -11,16 +11,16 @@ export default {
   'footer.licence': 'Code under the MIT licence. Sounds and textures CC0.',
 
   // Landing: SEO
-  'seo.title': 'Guti Arena: play four-colour Sholo Guti online, free',
+  'seo.title': 'Play four-colour Sholo Guti online, free | Guti Arena',
   'seo.description':
     'Play the four-colour Sholo Guti board game in your browser: 2 to 4 players on one phone, against the computer, or with friends by link. Free, no sign-up.',
   'seo.board': 'The Guti Arena board with all four colours in their starting places',
 
   // Hero
-  'hero.title': 'Guti Arena: four-colour Sholo Guti in your browser',
+  'hero.title': 'Play Sholo Guti with friends',
   'hero.sub':
-    'Play the village board game on one phone, against the computer, or with friends by link.',
-  'hero.fact': '2 to 4 players · free · no sign-up',
+    'The four-colour village board game. Play on one phone, against the computer, or online with a link.',
+  'hero.fact': 'Free, with no sign-up, for 2 to 4 players.',
   'join.label': 'Have a room code?',
   'join.placeholder': '5 letters',
   'join.submit': 'Join room',
@@ -83,7 +83,7 @@ export default {
   'close.body': 'Choose your seats and start. A game against the computer takes about ten minutes.',
 
   // How to play page
-  'rules.seo.title': 'How to play Guti Arena: rules of four-colour Sholo Guti',
+  'rules.seo.title': 'Sholo Guti rules for four players | Guti Arena',
   'rules.seo.description':
     'Rules of four-colour Sholo Guti: the board, moving, capturing, chained jumps, turn order and how to win, with diagrams.',
   'rules.title': 'How to play Guti Arena',

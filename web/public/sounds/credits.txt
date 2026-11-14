@@ -1,0 +1,7 @@
+Sound effects from Kenney (www.kenney.nl), CC0 1.0 public domain:
+- move.mp3: Casino Audio, chip-lay-1
+- capture.mp3: Casino Audio, chips-collide-1
+- turn.mp3: Interface Sounds, glass_001
+- win.mp3: Interface Sounds, confirmation_002
+- lose.mp3: Interface Sounds, minimize_005
+Converted to mono MP3.

@@ -43,7 +43,7 @@ export function SeatMark({
  * One pebble at the origin: contact shadow, body, highlight and seat mark.
  * The shadow is a plain soft ellipse; a blur filter per piece costs too much paint time.
  */
-function Pebble({ seat }: { seat: Seat }) {
+export function Pebble({ seat }: { seat: Seat }) {
   return (
     <>
       <ellipse cy={0.2} rx={0.32} ry={0.13} fill="var(--color-charcoal)" opacity={0.25} />

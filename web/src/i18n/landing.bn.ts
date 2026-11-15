@@ -6,7 +6,8 @@ export default {
   'nav.home': 'গুটি অ্যারেনা হোম',
   'cta.play': 'এখনই খেলুন',
   'cta.friends': 'বন্ধুদের সঙ্গে খেলুন',
-  'footer.madeBy': 'বানিয়েছেন রাকিব হাসান সোহাগ',
+  'footer.madeBy': 'বানিয়েছেন',
+  'footer.author': 'রাকিব হাসান সোহাগ',
   'footer.source': 'GitHub-এ সোর্স কোড',
   'footer.licence': 'কোড MIT লাইসেন্সে। শব্দ ও টেক্সচার CC0।',
 

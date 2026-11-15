@@ -6,7 +6,8 @@ export default {
   'nav.home': 'Guti Arena home',
   'cta.play': 'Play now',
   'cta.friends': 'Play with friends',
-  'footer.madeBy': 'Made by Rakib Hasan Sohag',
+  'footer.madeBy': 'Made by',
+  'footer.author': 'Rakib Hasan Sohag',
   'footer.source': 'Source code on GitHub',
   'footer.licence': 'Code under the MIT licence. Sounds and textures CC0.',
 

@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { BoardArt, SeatMark } from '@/share/board-art';
 import { SEAT_FILL } from '@/share/seat-colours';
 import { Seo, SITE_URL } from '@/share/seo';
-import { CTA, REPO_URL, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
+import { AUTHOR_URL, CTA, REPO_URL, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
 
 const SEATS: Seat[] = [0, 1, 2, 3];
 const START: Record<PointId, Seat> = Object.fromEntries(
@@ -102,7 +102,7 @@ export default function Landing() {
       numberOfPlayers: { '@type': 'QuantitativeValue', minValue: 2, maxValue: 4 },
       inLanguage: ['bn', 'en'],
       isAccessibleForFree: true,
-      author: { '@type': 'Person', name: 'Rakib Hasan Sohag' },
+      author: { '@type': 'Person', name: 'Rakib Hasan Sohag', url: AUTHOR_URL },
       license: 'https://opensource.org/license/mit',
       codeRepository: REPO_URL,
     },

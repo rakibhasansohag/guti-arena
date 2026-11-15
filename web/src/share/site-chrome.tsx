@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { LangSwitch } from './lang-switch.tsx';
 
 export const REPO_URL = 'https://github.com/rakibhasansohag/guti-arena';
+export const AUTHOR_URL = 'https://rakibhasansohag.com';
 
 /** Page container: equal side gutters, wider on 2K and 4K screens. */
 export const WRAP = 'mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 4xl:max-w-[96rem]';
@@ -77,7 +78,19 @@ export function SiteFooter() {
             <p lang="en" className="font-display text-lg font-extrabold">
               Guti Arena
             </p>
-            <p className="text-sm text-chalk/80">{t('footer.madeBy')}</p>
+            <p className="text-sm text-chalk/80">
+              {t('footer.madeBy')}{' '}
+              <a
+                href={AUTHOR_URL}
+                rel="author"
+                className={cn(
+                  link,
+                  'font-display font-extrabold text-chalk decoration-chalk/40 hover:decoration-chalk',
+                )}
+              >
+                {t('footer.author')}
+              </a>
+            </p>
           </div>
         </div>
         <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">

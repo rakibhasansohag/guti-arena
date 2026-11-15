@@ -81,7 +81,16 @@ Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and ot
 - Under `prefers-reduced-motion`, hover and press change colour only (a rule in `index.css` cancels the lift and icon scale).
 - Text links draw an underline from the left on hover.
 - The FAQ accordion opens and closes its height over 350 ms `ease-clay` (set with `--tw-duration` and `--tw-ease` on the accordion root).
-- No scroll-triggered reveals or parallax. The one ambient loop is the hero board's piece hopping to the centre and back every 3.2 s.
+- The one ambient loop is the hero board's piece hopping to the centre and back every 3.2 s. No parallax.
+
+### Scroll
+
+The content pages (landing, rules hub, game guides) move with the scrollbar, so everything plays backwards on the way up. It is pure CSS (`animation-timeline: view()` in `web/src/styles/index.css`), needs no script, and is off under reduced motion and in browsers without scroll timelines, where everything is simply shown.
+
+- `reveal`: the element rises 3rem and fades in as it enters the screen. It is finished once the element is on screen (or 24rem in, for tall ones), so text is never read while faded.
+- `reveal-row`: the children rise one after another (three steps), for card grids and short lists.
+- `leave`: a section sinks back and fades to 20% as its last 45% of a screen scrolls off the top, so one section holds the eye at a time.
+- Never put `leave` on an element that also rises, never animate a full-bleed colour band (animate its inner wrapper), the footer or the first screen's content, and never use these on the game screens.
 
 ## Courts and piece sets
 

@@ -72,11 +72,11 @@ export default function Guide() {
           </Button>
         </section>
 
-        <section aria-labelledby="steps-title" className="flex flex-col gap-6">
-          <h2 id="steps-title" className={H2}>
+        <section aria-labelledby="steps-title" className="leave flex flex-col gap-6">
+          <h2 id="steps-title" className={cn(H2, 'reveal')}>
             {ui.steps}
           </h2>
-          <ol className="grid gap-6 md:grid-cols-2">
+          <ol className="reveal-row grid gap-6 md:grid-cols-2">
             {STEPS[board].map((step, i) => {
               const text = g.steps[step.key]!;
               return (
@@ -100,7 +100,7 @@ export default function Guide() {
           </ol>
         </section>
 
-        <section aria-labelledby="lesson-title" className={cn(CARD, 'flex flex-col gap-4')}>
+        <section aria-labelledby="lesson-title" className={cn(CARD, 'reveal flex flex-col gap-4')}>
           <h2 id="lesson-title" className={H2}>
             {ui.lessonTitle}
           </h2>
@@ -114,7 +114,7 @@ export default function Guide() {
           )}
         </section>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="leave reveal-row grid gap-6 md:grid-cols-2">
           <section aria-labelledby="tips-title" className={cn(CARD, 'flex flex-col gap-4')}>
             <h2 id="tips-title" className={H2}>
               {ui.tips}

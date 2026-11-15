@@ -100,3 +100,74 @@
     scale: none !important;
   }
 }
+
+/*
+ * Scroll-linked section motion (docs/DESIGN.md, "Scroll"). Progress follows the scrollbar, so it
+ * plays backwards on the way up. Pure CSS: it works on the prerendered pages before any script.
+ * Browsers without scroll timelines, and reduced motion, simply show everything.
+ *   .reveal         rises in as it enters the screen
+ *   .reveal-row     its children rise in one after another
+ *   .leave          sinks back a little as its last part scrolls off the top
+ * Never put .leave on an element that also rises: the later animation would override the first.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal,
+    .reveal-row > * {
+      animation: rise linear both;
+      animation-timeline: view();
+      /* Done once the element is on screen, or 24rem in for tall ones, so text is never read faded. */
+      animation-range: entry 0% entry min(100%, 24rem);
+    }
+    .reveal-row > :nth-child(3n + 2) {
+      animation-name: rise-second;
+    }
+    .reveal-row > :nth-child(3n) {
+      animation-name: rise-third;
+    }
+    .leave {
+      animation: leave linear both;
+      animation-timeline: view();
+      animation-range: exit max(0%, calc(100% - 45vh)) exit 100%;
+    }
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 3rem;
+    scale: 0.96;
+  }
+  70% {
+    opacity: 1;
+  }
+}
+@keyframes rise-second {
+  from,
+  18% {
+    opacity: 0;
+    translate: 0 3.5rem;
+    scale: 0.96;
+  }
+  80% {
+    opacity: 1;
+  }
+}
+@keyframes rise-third {
+  from,
+  34% {
+    opacity: 0;
+    translate: 0 4rem;
+    scale: 0.96;
+  }
+  90% {
+    opacity: 1;
+  }
+}
+@keyframes leave {
+  to {
+    opacity: 0.2;
+    translate: 0 -2rem;
+    scale: 0.98;
+  }
+}

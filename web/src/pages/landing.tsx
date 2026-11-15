@@ -29,7 +29,7 @@ const CODE = /^[B-DF-HJ-NP-TV-Z]{5}$/;
 // Below-the-fold sections skip style and layout until they near the viewport, so the hero paints first.
 const LATER = '[content-visibility:auto] [contain-intrinsic-size:auto_900px]';
 const SECTION = `py-20 lg:py-28 3xl:py-36 ${LATER}`;
-const H2 = 'font-display text-3xl font-extrabold leading-tight sm:text-4xl 3xl:text-5xl';
+const H2 = 'reveal font-display text-3xl font-extrabold leading-tight sm:text-4xl 3xl:text-5xl';
 const CARD = 'rounded-clay bg-card p-6 shadow-clay 3xl:p-8';
 
 function JoinForm() {
@@ -126,7 +126,7 @@ export default function Landing() {
           id="top"
           className={cn(
             WRAP,
-            'grid flex-1 items-center gap-10 pb-12 lg:grid-cols-[1fr_1.05fr] lg:gap-14',
+            'leave grid flex-1 items-center gap-10 pb-12 lg:grid-cols-[1fr_1.05fr] lg:gap-14',
           )}
         >
           <div className="flex flex-col gap-6">
@@ -155,11 +155,11 @@ export default function Landing() {
         </main>
       </div>
 
-      <section aria-labelledby="how-title" className={cn(WRAP, SECTION)}>
+      <section aria-labelledby="how-title" className={cn(WRAP, SECTION, 'leave')}>
         <h2 id="how-title" className={H2}>
           {t('how.title')}
         </h2>
-        <ol className="mt-10 grid gap-6 md:grid-cols-3">
+        <ol className="reveal-row mt-10 grid gap-6 md:grid-cols-3">
           {[
             { n: 1, view: [0, 0, 1, 1], pieces: {}, label: 'how.diagram1' },
             {
@@ -241,13 +241,13 @@ export default function Landing() {
       </section>
 
       <section aria-labelledby="story-title" className="bg-chalk">
-        <div className={cn(WRAP, SECTION, 'grid items-center gap-10 lg:grid-cols-2')}>
+        <div className={cn(WRAP, SECTION, 'leave grid items-center gap-10 lg:grid-cols-2')}>
           <div className="flex flex-col gap-6">
             <h2 id="story-title" className={H2}>
               {t('story.title')}
             </h2>
-            <p className="max-w-xl text-lg 3xl:text-xl">{t('story.body')}</p>
-            <ul className="flex flex-col gap-1 font-display text-4xl font-extrabold text-clay sm:text-5xl 3xl:text-6xl">
+            <p className="reveal max-w-xl text-lg 3xl:text-xl">{t('story.body')}</p>
+            <ul className="reveal-row flex flex-col gap-1 font-display text-4xl font-extrabold text-clay sm:text-5xl 3xl:text-6xl">
               <li>{t('story.points')}</li>
               <li>{t('story.pieces')}</li>
               <li>{t('story.seats')}</li>
@@ -257,16 +257,16 @@ export default function Landing() {
             pieces={NORTH_TRIANGLE}
             view={[-0.6, -2.7, 7.2, 4.3]}
             label={t('story.diagram')}
-            className="w-full"
+            className="reveal w-full"
           />
         </div>
       </section>
 
-      <section aria-labelledby="features-title" className={cn(WRAP, SECTION)}>
+      <section aria-labelledby="features-title" className={cn(WRAP, SECTION, 'leave')}>
         <h2 id="features-title" className={H2}>
           {t('features.title')}
         </h2>
-        <ul className="mt-10 grid gap-6 md:grid-cols-3">
+        <ul className="reveal-row mt-10 grid gap-6 md:grid-cols-3">
           {[
             { k: 'seats', Icon: Users },
             { k: 'ai', Icon: Bot },
@@ -285,7 +285,7 @@ export default function Landing() {
         </ul>
       </section>
 
-      <section aria-labelledby="faq-title" className={cn(WRAP, SECTION)}>
+      <section aria-labelledby="faq-title" className={cn(WRAP, SECTION, 'leave')}>
         <h2 id="faq-title" className={H2}>
           {t('faq.title')}
         </h2>
@@ -294,7 +294,7 @@ export default function Landing() {
           collapsible
           className={cn(
             CARD,
-            'mt-8 max-w-3xl px-6 py-2 4xl:max-w-5xl [--tw-duration:350ms] [--tw-ease:cubic-bezier(.22,1,.36,1)]',
+            'reveal mt-8 max-w-3xl px-6 py-2 4xl:max-w-5xl [--tw-duration:350ms] [--tw-ease:cubic-bezier(.22,1,.36,1)]',
           )}
         >
           {FAQ.map((k) => (

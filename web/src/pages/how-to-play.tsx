@@ -120,12 +120,12 @@ export default function HowToPlay() {
           />
         </section>
 
-        <section aria-labelledby="games-title" className="flex flex-col gap-5">
-          <h2 id="games-title" className={H2}>
+        <section aria-labelledby="games-title" className="leave flex flex-col gap-5">
+          <h2 id="games-title" className={cn(H2, 'reveal')}>
             {t('rules.games.title')}
           </h2>
-          <p className="max-w-3xl">{t('rules.games.body')}</p>
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <p className="reveal max-w-3xl">{t('rules.games.body')}</p>
+          <ul className="reveal-row grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {BOARD_IDS.map((id) => (
               <li key={id} className={cn(CARD, 'flex flex-col gap-2')}>
                 <h3 className="font-display text-xl font-extrabold">{g(`boards.${id}`)}</h3>
@@ -144,7 +144,7 @@ export default function HowToPlay() {
           </ul>
         </section>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="leave reveal-row grid gap-6 md:grid-cols-2">
           {RULES.map(({ key, view, pieces, arrows, ghosts }) => (
             <section
               key={key}
@@ -167,7 +167,7 @@ export default function HowToPlay() {
           ))}
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="leave reveal-row grid gap-6 md:grid-cols-2">
           <section aria-labelledby="turns-title" className={cn(CARD, 'flex flex-col gap-4')}>
             <h2 id="turns-title" className={H2}>
               {t('rules.turns.title')}

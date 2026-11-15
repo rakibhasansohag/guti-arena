@@ -4,8 +4,8 @@ import { SEAT_FILL } from './seat-colours.ts';
 
 /*
  * Piece sets, each drawn at the origin about 0.35 board units across, like `Pebble`.
- * Every set keeps the seat colour as its largest area and the seat's colour-blind mark in the
- * middle, so seats stay apart whatever the look. The contact shadow takes `--piece-shadow` from
+ * Every set keeps the seat colour as its largest area and shows the seat's colour-blind mark
+ * (in the middle, or on a rim tag for the foods), so seats stay apart whatever the look. The contact shadow takes `--piece-shadow` from
  * the court, so dark courts get a light halo instead of a dark smudge.
  */
 
@@ -28,47 +28,113 @@ function Shadow() {
   );
 }
 
-/** Sweets and fruit on a plate in the seat colour: rosogolla, kalojam, jilapi, mango. */
+/**
+ * Sweets and fruit on a plate in the seat colour: rosogolla, kalojam, jilapi, mango.
+ * The food fills the plate, so the seat mark sits on a small tag at the rim instead of on top of it.
+ */
 function Food({ seat }: { seat: Seat }) {
   return (
     <>
       <Shadow />
-      <circle r={0.36} fill={SEAT_FILL[seat]} stroke={INK} strokeWidth={rim(seat)} />
-      <circle r={0.28} fill="none" stroke={INK} strokeOpacity={0.2} strokeWidth={0.025} />
+      <circle r={0.37} fill={SEAT_FILL[seat]} stroke={INK} strokeWidth={rim(seat)} />
       {seat === 0 && (
         <>
-          <circle r={0.2} fill="#F6EFDC" stroke="#C9B48A" strokeWidth={0.025} />
-          <ellipse cx={-0.07} cy={-0.09} rx={0.07} ry={0.04} fill="#fff" opacity={0.8} />
-          <SeatMark seat={0} x={0} y={0.03} colour={INK} />
+          <circle r={0.27} fill="#F6EFDC" stroke="#B89F6E" strokeWidth={0.03} />
+          <path
+            d="M-.2 .1A.23 .23 0 0 0 .2 .1"
+            fill="none"
+            stroke="#D9C79C"
+            strokeWidth={0.05}
+            strokeLinecap="round"
+          />
+          <ellipse
+            cx={-0.09}
+            cy={-0.12}
+            rx={0.1}
+            ry={0.055}
+            fill="#fff"
+            transform="rotate(-25 -0.09 -0.12)"
+          />
         </>
       )}
       {seat === 1 && (
         <>
-          <ellipse rx={0.23} ry={0.17} fill="#3B2117" transform="rotate(-20)" />
-          <ellipse cx={-0.08} cy={-0.07} rx={0.08} ry={0.035} fill="#fff" opacity={0.35} />
-          <SeatMark seat={1} x={0} y={0.02} colour={CHALK} />
+          <ellipse
+            rx={0.3}
+            ry={0.21}
+            fill="#3B2117"
+            stroke="#1F100A"
+            strokeWidth={0.03}
+            transform="rotate(-20)"
+          />
+          <ellipse
+            cx={-0.1}
+            cy={-0.09}
+            rx={0.1}
+            ry={0.04}
+            fill="#fff"
+            opacity={0.4}
+            transform="rotate(-20 -0.1 -0.09)"
+          />
+          {[
+            [0.02, -0.02],
+            [0.12, 0.03],
+            [-0.06, 0.07],
+          ].map(([x, y]) => (
+            <circle key={`${x}${y}`} cx={x} cy={y} r={0.025} fill="#F6EFDC" />
+          ))}
         </>
       )}
       {seat === 2 && (
-        <>
+        <g fill="none" strokeLinecap="round">
           <path
-            d="M.06 0A.06 .06 0 0 0-.06 0A.1 .1 0 0 0 .14 0A.14 .14 0 0 0-.14 0A.18 .18 0 0 0 .22 0"
-            fill="none"
-            stroke="#D9731A"
-            strokeWidth={0.075}
-            strokeLinecap="round"
+            d="M.07 0A.07 .07 0 0 0-.07 0A.12 .12 0 0 0 .17 0A.17 .17 0 0 0-.17 0A.22 .22 0 0 0 .27 0"
+            stroke="#B8540F"
+            strokeWidth={0.11}
           />
-          <SeatMark seat={2} x={0} y={0} colour={INK} />
-        </>
+          <path
+            d="M.07 0A.07 .07 0 0 0-.07 0A.12 .12 0 0 0 .17 0A.17 .17 0 0 0-.17 0A.22 .22 0 0 0 .27 0"
+            stroke="#F08A1D"
+            strokeWidth={0.07}
+          />
+        </g>
       )}
       {seat === 3 && (
-        <>
-          <ellipse rx={0.17} ry={0.24} fill="#F2B134" transform="rotate(35)" />
-          <ellipse cx={0.1} cy={-0.16} rx={0.07} ry={0.05} fill="#7FA33A" transform="rotate(35)" />
-          <ellipse cx={-0.06} cy={-0.06} rx={0.05} ry={0.08} fill="#fff" opacity={0.35} />
-          <SeatMark seat={3} x={0} y={0.03} colour={INK} />
-        </>
+        <g transform="rotate(35)">
+          <path
+            d="M0-.3C.2-.3 .24 0 .16 .18C.1 .3-.1 .3-.16 .18C-.24 0-.2-.3 0-.3Z"
+            fill="#F2B134"
+            stroke="#B5791A"
+            strokeWidth={0.03}
+          />
+          <path
+            d="M0 .1C.1 .1 .16-.02 .14-.14"
+            fill="none"
+            stroke="#E2572B"
+            strokeOpacity={0.6}
+            strokeWidth={0.06}
+            strokeLinecap="round"
+          />
+          <ellipse cx={-0.07} cy={-0.1} rx={0.045} ry={0.09} fill="#fff" opacity={0.4} />
+          <path
+            d="M0-.3Q.14-.42 .26-.3Q.12-.22 0-.3Z"
+            fill="#6E9A2E"
+            stroke="#3F5E17"
+            strokeWidth={0.02}
+          />
+        </g>
       )}
+      <circle
+        cx={0.25}
+        cy={0.25}
+        r={0.13}
+        fill={SEAT_FILL[seat]}
+        stroke={INK}
+        strokeWidth={0.035}
+      />
+      <g transform="translate(0.25 0.25) scale(0.7)">
+        <SeatMark seat={seat} x={0} y={0} colour={onSeat(seat)} />
+      </g>
     </>
   );
 }

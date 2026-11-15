@@ -27,6 +27,7 @@ No betting, wagering or money features anywhere, including copy and art.
   - `pnpm --filter web make-images` regenerates `public/og/guti-arena.png`, `public/icons/*` and the board pictures `public/board/*.webp` with headless Edge or Chrome and ffmpeg. Re-run it after changing `BoardArt` or the start position.
 - `worker/`: Cloudflare Worker. `wrangler.jsonc` serves `../web/dist` with single-page-app fallback; only `/api/*` runs the Worker. Durable Object binding `ROOM`, class `Room`, SQLite storage (declared with `exports`). Run `pnpm --filter worker cf-typegen` after editing `wrangler.jsonc`. Room rules are plain functions in `src/room-logic.ts` (tested in `test/`); `src/index.ts` is the Durable Object and the `/api` routes. Deployed to the custom domain `guti.rakibhasansohag.com` (`workers_dev` off). Secret `TURNSTILE_SECRET` is set in Cloudflare; `.dev.vars` holds Cloudflare's public always-pass test secret for local dev.
 - `docs/DESIGN.md`: the design system.
+- `.github/workflows/deploy.yml`: every push to `main` runs lint, typecheck and tests, builds the web app and deploys the Worker. It needs the repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. A failed check stops the deploy. To deploy by hand: `pnpm --filter web build` then `pnpm --filter worker run deploy`.
 
 ## Scripts (from the repo root)
 

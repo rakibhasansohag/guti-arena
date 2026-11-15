@@ -82,6 +82,12 @@ export default {
   'point.target': 'এখানে চাল দেওয়া যায়',
   'point.selected': 'বাছাই করা',
 
+  'status.pickTarget': 'এবার চিহ্নিত বিন্দুতে চাপ দিন',
+  'hint.wait': 'একটু অপেক্ষা: এখন {name}-এর পালা',
+  'hint.watching': 'আপনি এই খেলাটা দেখছেন',
+  'hint.blocked': 'এই গুটির এখন চাল নেই। বৃত্ত দেওয়া গুটি বেছে নিন',
+  'hint.notYours': 'এই গুটিটা আপনার নয়',
+  'hint.pickFirst': 'আগে বৃত্ত দেওয়া নিজের একটা গুটিতে চাপ দিন',
   'status.yourTurn': 'আপনার চাল: একটি গুটি বাছুন',
   'status.chain': 'আবার টপকান, অথবা চাল শেষ করুন',
   'status.turn': '{name}-এর চাল',

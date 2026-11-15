@@ -83,6 +83,12 @@ export default {
   'point.target': 'you can move here',
   'point.selected': 'selected',
 
+  'status.pickTarget': 'Now tap a marked point to move there',
+  'hint.wait': "Wait: it's {name}'s turn",
+  'hint.watching': 'You are watching this game',
+  'hint.blocked': 'That piece has no move right now. Try a ringed one',
+  'hint.notYours': 'That piece is not yours',
+  'hint.pickFirst': 'Tap one of your ringed pieces first',
   'status.yourTurn': 'Your turn: pick a piece',
   'status.chain': 'Jump again, or end your turn',
   'status.turn': "{name}'s turn",

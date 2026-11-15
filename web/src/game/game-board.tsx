@@ -119,6 +119,37 @@ export function GameBoard({
 
   const placing = legal[0]?.from === HAND;
   const forced = mustCapture(state.board);
+  /** My pieces that have a move, ringed while nothing is selected so nobody hunts for them. */
+  const movable = useMemo(
+    () => [...new Set(legal.map((m) => m.from))].filter((id) => id !== HAND),
+    [legal],
+  );
+
+  // Why the last tap did nothing; shown in place of the status for a moment.
+  const [hint, setHint] = useState<{ state: GameState; key: string } | null>(null);
+  useEffect(() => {
+    if (!hint) return;
+    const id = setTimeout(() => setHint(null), 2500);
+    return () => clearTimeout(id);
+  }, [hint]);
+  const explain = (id: PointId) => {
+    if (state.winner !== null) return;
+    const piece = state.pieces[id];
+    const key = !myTurn
+      ? mySeat === null
+        ? 'hint.watching'
+        : 'hint.wait'
+      : state.chainFrom || placing
+        ? null // the status line already says what to do
+        : piece === mySeat
+          ? 'hint.blocked'
+          : piece !== undefined
+            ? 'hint.notYours'
+            : selected
+              ? null // tapping away from a selected piece just lets go of it
+              : 'hint.pickFirst';
+    if (key) setHint({ state, key });
+  };
 
   function tap(id: PointId) {
     // A goat from the hand (Bagh-chal) goes straight onto the tapped point.
@@ -127,10 +158,13 @@ export function GameBoard({
     if (move) {
       onMove(move);
       setSel(null);
+      setHint(null);
     } else if (!state.chainFrom && legal.some((m) => m.from === id)) {
       setSel({ state, point: id });
-    } else if (!state.chainFrom) {
-      setSel(null);
+      setHint(null);
+    } else {
+      explain(id);
+      if (!state.chainFrom) setSel(null);
     }
   }
 
@@ -218,9 +252,11 @@ export function GameBoard({
                 : 'status.chain'
               : placing
                 ? 'status.place'
-                : forced && legal.some((m) => jumpedPoint(m, board) !== null)
-                  ? 'status.mustCapture'
-                  : 'status.yourTurn',
+                : selected
+                  ? 'status.pickTarget'
+                  : forced && legal.some((m) => jumpedPoint(m, board) !== null)
+                    ? 'status.mustCapture'
+                    : 'status.yourTurn',
           )
         : seats[state.turn]?.kind === 'ai'
           ? t('status.thinking', { name: name(state.turn) })
@@ -305,6 +341,24 @@ export function GameBoard({
 
             <Pieces tracked={tracked} pos={pos} uid={uid} />
 
+            {!selected &&
+              movable.map((id) => (
+                <motion.circle
+                  key={`can-${id}`}
+                  cx={pos[id]!.x}
+                  cy={pos[id]!.y}
+                  r={0.47}
+                  fill="none"
+                  stroke="var(--color-chalk)"
+                  strokeWidth={0.07}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0.45, 1, 0.45] }}
+                  // Waits for the last move to land, then breathes slowly.
+                  transition={{ delay: 0.4, duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                  className="pointer-events-none"
+                />
+              ))}
+
             {selected && (
               <circle
                 cx={pos[selected]!.x}
@@ -375,7 +429,19 @@ export function GameBoard({
 
         <div className="flex min-h-12 flex-wrap items-center justify-center gap-3 px-4 3xl:min-h-14">
           <p aria-live="polite" className="font-display text-lg font-extrabold 3xl:text-xl">
-            {status}
+            {hint?.state === state ? (
+              <motion.span
+                key={hint.key}
+                className="inline-block"
+                initial={{ x: 0 }}
+                animate={{ x: [0, -6, 6, -3, 0] }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              >
+                {t(hint.key, { name: name(state.turn) })}
+              </motion.span>
+            ) : (
+              status
+            )}
           </p>
           {myTurn && state.chainFrom && !forced && (
             <Button

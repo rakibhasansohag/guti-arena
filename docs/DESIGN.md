@@ -66,6 +66,11 @@ Text on clay uses `clay-deep` (`#9A4F2C`, 5.1:1 with chalk). Plain `clay` is 3.7
 
 Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and others). Accordions animate their height and tabs crossfade; nothing snaps. Under `prefers-reduced-motion`, everything is instant or fade-only (a global rule in `tokens.css` already shortens CSS transitions; Motion components should check `useReducedMotion`).
 
+### Turn guidance on the board
+
+- On your turn, every piece of yours that has a move wears a chalk ring that breathes slowly (1.8 s); the rings go once a piece is selected.
+- A tap that does nothing is answered in the status line for 2.5 s with a small shake: wait for the named player, the piece is blocked, the piece is not yours, or pick a ringed piece first.
+
 ### Hover and press
 
 - Every actionable element shows the pointer cursor (a base rule in `web/src/styles/index.css`); disabled ones show `not-allowed`. Focus shows a 2 px clay outline.

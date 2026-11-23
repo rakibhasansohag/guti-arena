@@ -17,7 +17,8 @@ import { cn } from '@/lib/utils';
 import { Seo } from '@/share';
 import { CTA, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
 
-const REFRESH_MS = 5000;
+/** With the Worker's 2-second list cache, a change shows within 5 seconds. */
+const REFRESH_MS = 3000;
 const CARD = 'rounded-clay bg-card p-4 text-card-foreground shadow-clay sm:p-5 3xl:p-6';
 const CHIP =
   'h-11 shrink-0 rounded-full bg-chalk/70 px-4 font-display text-sm font-extrabold transition-[background-color,color,translate,box-shadow] duration-[200ms,200ms,350ms,350ms] ease-clay hover:-translate-y-0.5 hover:bg-clay/25 hover:shadow-clay active:translate-y-0 aria-pressed:bg-charcoal aria-pressed:text-chalk aria-pressed:hover:bg-charcoal sm:text-base';
@@ -74,85 +75,92 @@ export default function Rooms() {
   return (
     <>
       <Seo path="/rooms" title={t('rooms.seo.title')} description={t('rooms.seo.description')} />
-      <SiteHeader />
-      <main className={cn(WRAP, 'flex flex-col gap-6 pt-6 pb-20 sm:pt-8 3xl:gap-8')}>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="font-display text-4xl font-extrabold leading-tight sm:text-5xl 3xl:text-6xl">
-              {t('rooms.title')}
-            </h1>
-            <p className="mt-2 max-w-prose text-base sm:text-lg 3xl:text-xl">{t('rooms.lead')}</p>
+      <div className="flex min-h-svh flex-col">
+        <SiteHeader />
+        <main className={cn(WRAP, 'flex flex-1 flex-col gap-6 pt-6 pb-20 sm:pt-8 3xl:gap-8')}>
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="font-display text-4xl font-extrabold leading-tight sm:text-5xl 3xl:text-6xl">
+                {t('rooms.title')}
+              </h1>
+              <p className="mt-2 max-w-prose text-base sm:text-lg 3xl:text-xl">{t('rooms.lead')}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button asChild className={cn(CTA, 'flex-1 md:flex-none')}>
+                <Link to="/r/new">
+                  <Plus aria-hidden="true" />
+                  {t('rooms.create')}
+                </Link>
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void load()}
+                aria-label={t('rooms.refresh')}
+                title={t('rooms.refresh')}
+                className={cn(CTA, 'w-12 px-0 3xl:w-14 3xl:px-0')}
+              >
+                <RefreshCw
+                  aria-hidden="true"
+                  className={cn(loading && 'motion-safe:animate-spin')}
+                />
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button asChild className={cn(CTA, 'flex-1 md:flex-none')}>
-              <Link to="/r/new">
-                <Plus aria-hidden="true" />
-                {t('rooms.create')}
-              </Link>
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => void load()}
-              aria-label={t('rooms.refresh')}
-              title={t('rooms.refresh')}
-              className={cn(CTA, 'w-12 px-0 3xl:w-14 3xl:px-0')}
+
+          <div
+            role="group"
+            aria-label={t('rooms.filter')}
+            // Chips scroll inside their own row on phones, so the page never scrolls sideways.
+            className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          >
+            <button
+              type="button"
+              aria-pressed={openOnly}
+              onClick={() => setOpenOnly((o) => !o)}
+              className={CHIP}
             >
-              <RefreshCw aria-hidden="true" className={cn(loading && 'motion-safe:animate-spin')} />
-            </Button>
-          </div>
-        </div>
-
-        <div
-          role="group"
-          aria-label={t('rooms.filter')}
-          // Chips scroll inside their own row on phones, so the page never scrolls sideways.
-          className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-        >
-          <button
-            type="button"
-            aria-pressed={openOnly}
-            onClick={() => setOpenOnly((o) => !o)}
-            className={CHIP}
-          >
-            {t('rooms.open')}
-          </button>
-          <span aria-hidden="true" className="mx-1 w-px shrink-0 self-stretch bg-charcoal/20" />
-          <button
-            type="button"
-            aria-pressed={board === null}
-            onClick={() => setBoard(null)}
-            className={CHIP}
-          >
-            {t('rooms.all')}
-          </button>
-          {BOARD_IDS.map((id) => (
-            <BoardChip key={id} id={id} on={board === id} onPick={() => setBoard(id)} />
-          ))}
-        </div>
-
-        {rooms === null && !failure ? (
-          <p role="status" className="font-display text-lg font-extrabold">
-            {t('rooms.loading')}
-          </p>
-        ) : rooms === null || failure === 'unavailable' ? (
-          <Empty
-            title={t(failure === 'unavailable' ? 'problem.daily-limit.title' : 'rooms.error.title')}
-            body={t(failure === 'unavailable' ? 'problem.daily-limit.body' : 'rooms.error.body')}
-            retry={failure === 'failed' ? () => void load() : undefined}
-          />
-        ) : rooms.length === 0 ? (
-          <Empty title={t('rooms.empty.title')} body={t('rooms.empty.body')} />
-        ) : shown.length === 0 ? (
-          <p className="font-display text-lg font-extrabold">{t('rooms.emptyFilter')}</p>
-        ) : (
-          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 3xl:gap-6 4xl:grid-cols-4">
-            {shown.map((r) => (
-              <RoomCard key={r.code} room={r} />
+              {t('rooms.open')}
+            </button>
+            <span aria-hidden="true" className="mx-1 w-px shrink-0 self-stretch bg-charcoal/20" />
+            <button
+              type="button"
+              aria-pressed={board === null}
+              onClick={() => setBoard(null)}
+              className={CHIP}
+            >
+              {t('rooms.all')}
+            </button>
+            {BOARD_IDS.map((id) => (
+              <BoardChip key={id} id={id} on={board === id} onPick={() => setBoard(id)} />
             ))}
-          </ul>
-        )}
-      </main>
-      <SiteFooter />
+          </div>
+
+          {rooms === null && !failure ? (
+            <p role="status" className="font-display text-lg font-extrabold">
+              {t('rooms.loading')}
+            </p>
+          ) : rooms === null || failure === 'unavailable' ? (
+            <Empty
+              title={t(
+                failure === 'unavailable' ? 'problem.daily-limit.title' : 'rooms.error.title',
+              )}
+              body={t(failure === 'unavailable' ? 'problem.daily-limit.body' : 'rooms.error.body')}
+              retry={failure === 'failed' ? () => void load() : undefined}
+            />
+          ) : rooms.length === 0 ? (
+            <Empty title={t('rooms.empty.title')} body={t('rooms.empty.body')} />
+          ) : shown.length === 0 ? (
+            <p className="font-display text-lg font-extrabold">{t('rooms.emptyFilter')}</p>
+          ) : (
+            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 3xl:gap-6">
+              {shown.map((r) => (
+                <RoomCard key={r.code} room={r} />
+              ))}
+            </ul>
+          )}
+        </main>
+        <SiteFooter />
+      </div>
     </>
   );
 }
@@ -235,28 +243,29 @@ function RoomCard({ room: r }: { room: RoomListing }) {
           </p>
           <p className="truncate text-sm sm:text-base">{t('rooms.host', { name: r.host })}</p>
           <Pips room={r} />
-          <p className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                'rounded-full px-2.5 py-0.5 font-display text-xs font-extrabold sm:text-sm',
-                r.phase !== 'lobby'
-                  ? 'bg-charcoal text-chalk'
-                  : open > 0
-                    ? 'bg-clay-deep text-chalk'
-                    : 'bg-chalk text-charcoal ring-1 ring-charcoal/30',
-              )}
-            >
-              {status}
-            </span>
-            {r.watchers > 0 && (
-              <span className="flex items-center gap-1 text-xs sm:text-sm">
-                <Eye aria-hidden="true" className="size-3.5" />
-                {t('watchers', { n: num(r.watchers) })}
-              </span>
-            )}
-          </p>
         </div>
       </div>
+      {/* Its own row, so the status never wraps inside a narrow card. */}
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span
+          className={cn(
+            'rounded-full px-3 py-1 font-display text-sm font-extrabold whitespace-nowrap',
+            r.phase !== 'lobby'
+              ? 'bg-charcoal text-chalk'
+              : open > 0
+                ? 'bg-clay-deep text-chalk'
+                : 'bg-chalk text-charcoal ring-1 ring-charcoal/30',
+          )}
+        >
+          {status}
+        </span>
+        {r.phase !== 'lobby' && r.watchers > 0 && (
+          <span className="flex items-center gap-1 text-sm whitespace-nowrap">
+            <Eye aria-hidden="true" className="size-4" />
+            {t('watchers', { n: num(r.watchers) })}
+          </span>
+        )}
+      </p>
       {action && (
         <Button
           asChild

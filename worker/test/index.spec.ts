@@ -18,7 +18,16 @@ async function connect(code: string) {
     return inbox.shift()!;
   };
   const clear = () => void inbox.splice(0);
-  return { ws, next, clear };
+  /** The next message of type `t`, dropping others before it; undefined after about a second. */
+  const take = async <T extends ServerMessage['t']>(t: T) => {
+    for (let i = 0; i < 100; i++) {
+      const at = inbox.findIndex((m) => m.t === t);
+      if (at >= 0) return inbox.splice(0, at + 1).at(-1) as Extract<ServerMessage, { t: T }>;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    return undefined;
+  };
+  return { ws, next, clear, take, inbox: () => inbox };
 }
 
 describe('worker', () => {
@@ -66,59 +75,75 @@ describe('worker', () => {
     const list = env.ROOM_LIST.getByName('all');
     expect(await env.ROOM.getByName(code).create(code)).toBe(true);
     const host = await connect(code);
-    await host.next();
     for (const m of [
       { t: 'join', playerId: 'host', name: 'Hostname' },
       { t: 'sit', seat: 0 },
       { t: 'set-access', access: 'public' },
     ]) {
       host.ws.send(JSON.stringify(m));
-      await host.next();
     }
+    await new Promise((r) => setTimeout(r, 100));
+    expect(host.inbox().filter((m) => m.t === 'error')).toEqual([]);
+    expect(host.inbox().at(-1)).toMatchObject({ t: 'state', room: { hostId: 'host' } });
     await new Promise((r) => setTimeout(r, 50));
     expect((await list.list()).find((x) => x.code === code)).toMatchObject({
       access: 'public',
       host: 'Hostname',
     });
 
+    host.clear();
     host.ws.send(JSON.stringify({ t: 'set-access', access: 'locked', password: 'mango' }));
-    expect((await host.next()).t).toBe('state');
+    expect((await host.take('state'))?.room.access).toBe('locked');
     await new Promise((r) => setTimeout(r, 50));
     expect((await list.list()).find((x) => x.code === code)?.access).toBe('locked');
 
     const out = await connect(code);
-    const first = await out.next();
-    expect(first.t === 'state' && first.room.hostId).toBe('');
+    const first = await out.take('state');
+    expect(first?.room.hostId).toBe('');
     expect(JSON.stringify(first)).not.toContain('Hostname');
 
     out.ws.send(JSON.stringify({ t: 'join', playerId: 'out', name: 'Out' }));
-    expect(await out.next()).toEqual({ t: 'error', code: 'need-password' });
+    expect(await out.take('error')).toEqual({ t: 'error', code: 'need-password' });
     const closed = new Promise<number>((r) => out.ws.addEventListener('close', (e) => r(e.code)));
     for (let i = 0; i < 5; i++) {
       out.ws.send(JSON.stringify({ t: 'join', playerId: 'out', name: 'Out', password: 'nope' }));
-      expect(await out.next()).toEqual({ t: 'error', code: 'wrong-password' });
+      expect(await out.take('error')).toEqual({ t: 'error', code: 'wrong-password' });
     }
     expect(await closed).toBe(4001);
 
     const guest = await connect(code);
-    await guest.next();
+    await guest.take('state');
     guest.ws.send(JSON.stringify({ t: 'join', playerId: 'g', name: 'Guest', password: 'mango' }));
-    const joined = await guest.next();
-    expect(joined.t === 'state' && joined.room.hostId).toBe('host');
+    const joined = await guest.take('state');
+    expect(joined?.you.playerId).toBe('g');
+    expect(joined?.room.hostId).toBe('-'); // never the host's player id
+    expect(joined?.room.seats[0]!.name).toBe('Hostname');
 
     const lurker = await connect(code);
     await new Promise((r) => setTimeout(r, 100));
     for (const c of [host, guest, lurker]) c.clear();
     host.ws.send(JSON.stringify({ t: 'react', id: 'gg' }));
     host.ws.send(JSON.stringify({ t: 'react', id: 'wow' })); // inside the gap: dropped
-    expect(await host.next()).toEqual({ t: 'reaction', seat: 0, id: 'gg' });
-    expect(await guest.next()).toEqual({ t: 'reaction', seat: 0, id: 'gg' });
+    expect(await host.take('reaction')).toEqual({ t: 'reaction', seat: 0, id: 'gg' });
+    expect(await guest.take('reaction')).toEqual({ t: 'reaction', seat: 0, id: 'gg' });
     await new Promise((r) => setTimeout(r, 100));
-    expect(await guest.next()).toBeUndefined();
-    expect(await lurker.next()).toBeUndefined(); // not joined to a locked room: no reactions
+    expect(guest.inbox().filter((m) => m.t === 'reaction')).toEqual([]); // 'wow' was dropped
+    expect(lurker.inbox().filter((m) => m.t === 'reaction')).toEqual([]); // not joined: none
     guest.ws.send(JSON.stringify({ t: 'react', id: 'gg' }));
-    expect(await guest.next()).toEqual({ t: 'error', code: 'not-seated' });
+    expect(await guest.take('error')).toEqual({ t: 'error', code: 'not-seated' });
 
+    // Reconnecting doesn't reset the guessing: the room stops checking after 20 wrong a minute.
+    for (let k = 0; k < 3; k++) {
+      const again = await connect(code);
+      for (let i = 0; i < 5; i++) {
+        again.ws.send(JSON.stringify({ t: 'join', playerId: 'out', name: 'Out', password: 'x' }));
+        await again.take('error');
+      }
+    }
+    const last = await connect(code);
+    last.ws.send(JSON.stringify({ t: 'join', playerId: 'out', name: 'Out', password: 'mango' }));
+    expect(await last.take('error')).toEqual({ t: 'error', code: 'rate-limit' });
+    last.ws.close();
     for (const c of [host, guest, lurker]) c.ws.close();
     await new Promise((r) => setTimeout(r, 100));
     expect((await list.list()).some((x) => x.code === code)).toBe(false);

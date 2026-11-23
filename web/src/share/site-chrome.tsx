@@ -79,7 +79,7 @@ export function SiteFooter() {
       <div
         className={cn(
           WRAP,
-          'flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between',
+          'flex flex-col gap-6 py-10 lg:flex-row lg:items-center lg:justify-between',
         )}
       >
         <div className="flex items-center gap-3">

@@ -1,11 +1,13 @@
 import { PASSWORD_MAX, type ClientMessage, type RoomListing } from '@guti-arena/engine';
 import { describe, expect, it } from 'vitest';
 import {
+  OTHER_HOST,
   REACT_GAP_MS,
   canReact,
   disconnect,
   handle,
   hashPassword,
+  hostIdFor,
   listing,
   newRoom,
   parseMessage,
@@ -121,6 +123,14 @@ describe('access', () => {
     expect(view(r).game).not.toBeNull();
   });
 
+  it('tells only the host the host id', () => {
+    const r = room();
+    expect(hostIdFor(r, 'a')).toBe('a');
+    expect(hostIdFor(r, 'b')).toBe(OTHER_HOST);
+    expect(hostIdFor(r, null)).toBe(OTHER_HOST);
+    expect(hostIdFor(r, null, '')).toBe(''); // already redacted
+  });
+
   it('counts watchers: connected players without a seat, including late joiners', () => {
     const r = room();
     for (const id of ['x', 'y', 'z']) handle(r, id, { t: 'join', playerId: id, name: id }, T0);
@@ -132,6 +142,8 @@ describe('access', () => {
     expect(r.players.find((p) => p.id === 'w')!.seat).toBeNull();
     disconnect(r, 'z', T0);
     expect(view(r).watchers).toBe(3);
+    // People watching without a name are open sockets that never joined.
+    expect(view(r, false, 2).watchers).toBe(5);
   });
 });
 

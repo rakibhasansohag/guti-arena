@@ -12,6 +12,7 @@ import {
   disconnect,
   handle,
   hashPassword,
+  hostIdFor,
   hostDueAt,
   listing,
   newRoom,
@@ -31,9 +32,12 @@ const MAX_MESSAGE_BYTES = 1024;
 const MAX_PER_SECOND = 10;
 const CLEANUP_MS = 30 * 60_000;
 const MAX_WRONG_PASSWORDS = 5;
+/** Wrong passwords a room takes from all sockets in a minute, so reconnecting doesn't reset the guessing. */
+const ROOM_WRONG_PER_MINUTE = 20;
 /** Re-push an unchanged listing this often, so the list's 35-minute expiry never drops a live room. */
 const LIST_REFRESH_MS = 10 * 60_000;
-const LIST_CACHE_SECONDS = 5;
+/** With the rooms page polling every 3 s, a change shows within 5 s. */
+const LIST_CACHE_SECONDS = 2;
 
 interface Saved {
   room: RoomData;
@@ -68,6 +72,8 @@ export class Room extends DurableObject<Env> {
   private rates = new Map<WebSocket, { start: number; n: number }>();
   /** Last reaction per player, for the throttle. Lost on hibernation, which is harmless. */
   private reacted = new Map<string, number>();
+  /** Wrong passwords this minute across every socket. In memory: a busy guesser keeps the room awake. */
+  private wrong = { start: 0, n: 0 };
   /** One stub, so pushes from this room reach the list in order. */
   private list = this.env.ROOM_LIST.getByName('all');
 
@@ -103,12 +109,8 @@ export class Room extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ playerId: null } satisfies Attachment);
     this.saved!.emptySince = null;
-    await this.commit();
-    send(server, {
-      t: 'state',
-      room: view(this.saved!.room, false),
-      you: { playerId: '', seat: null },
-    });
+    // Everyone gets the state, so the watcher count includes this socket; it gets the redacted view.
+    await this.changed();
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -134,6 +136,10 @@ export class Room extends DurableObject<Env> {
       return send(ws, { t: 'error', code: 'already-joined' });
     }
     // Hashing is async; block other events meanwhile so messages keep their order.
+    if (m.t === 'join' && m.password && now - this.wrong.start < 60_000) {
+      if (this.wrong.n >= ROOM_WRONG_PER_MINUTE)
+        return send(ws, { t: 'error', code: 'rate-limit' });
+    }
     const pending = passwordHash(m, s.room);
     const hash = pending && (await this.ctx.blockConcurrencyWhile(() => pending));
     const hostBefore = s.room.hostId;
@@ -142,6 +148,8 @@ export class Room extends DurableObject<Env> {
     if (error) {
       send(ws, { t: 'error', code: error });
       if (error === 'wrong-password') {
+        if (now - this.wrong.start >= 60_000) this.wrong = { start: now, n: 0 };
+        this.wrong.n++;
         const strikes = (att.strikes ?? 0) + 1;
         ws.serializeAttachment({ ...att, strikes } satisfies Attachment);
         if (strikes >= MAX_WRONG_PASSWORDS) ws.close(4001, 'wrong-password');
@@ -171,7 +179,7 @@ export class Room extends DurableObject<Env> {
     const id = playerOf(ws);
     if (id !== null && !others.some((x) => playerOf(x) === id)) disconnect(s.room, id, now);
     if (others.length === 0) s.emptySince = now;
-    await this.changed();
+    await this.changed(ws);
   }
 
   override async alarm() {
@@ -194,27 +202,31 @@ export class Room extends DurableObject<Env> {
   }
 
   /** Save, tell every socket, keep the room list current, and schedule the next server move or cleanup. */
-  private async changed() {
+  private async changed(closing?: WebSocket) {
     await this.commit();
     const s = this.saved!;
-    const room = view(s.room);
-    const hidden = view(s.room, false);
-    for (const ws of this.ctx.getWebSockets()) {
+    // A closing socket is still in the list while its close handler runs.
+    const sockets = this.ctx.getWebSockets().filter((x) => x !== closing);
+    const guests = sockets.filter((x) => playerOf(x) === null).length;
+    const room = view(s.room, true, guests);
+    const hidden = view(s.room, false, guests);
+    for (const ws of sockets) {
       const playerId = playerOf(ws);
       const seat = s.room.players.find((p) => p.id === playerId)?.seat ?? null;
+      const state = playerId === null ? hidden : room;
       send(ws, {
         t: 'state',
-        room: playerId === null ? hidden : room,
+        room: { ...state, hostId: hostIdFor(s.room, playerId, state.hostId) },
         you: { playerId: playerId ?? '', seat },
       });
     }
-    await this.syncListing();
+    await this.syncListing(guests);
   }
 
   /** Push this room's listing when a listed field changed (or it is due a refresh); remove it when unlisted. */
-  private async syncListing() {
+  private async syncListing(guests: number) {
     const s = this.saved!;
-    const row = listing(s.room);
+    const row = listing(s.room, guests);
     const json = row ? JSON.stringify(row) : undefined;
     const now = Date.now();
     const fresh = json === undefined || now - (s.listedAt ?? 0) < LIST_REFRESH_MS;

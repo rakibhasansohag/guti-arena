@@ -94,21 +94,35 @@ export function RoomGame({
         )}
       />
       {away && (
-        <p className="px-4 text-center text-sm sm:text-base">
+        // Side padding keeps the text clear of the reaction button in the corner.
+        <p className="px-16 text-center text-sm sm:text-base">
           {t('game.away', { name: name(game.turn) })}
         </p>
       )}
       {react && room.phase !== 'ended' && (
-        <div className="mt-2 flex justify-center">
-          <ReactionButton onReact={react.onReact} cooling={react.cooling} board={wrap} />
-        </div>
+        // The board fills the screen height, so the button sits in the bottom corner, beside the
+        // status line and clear of the seat panels, instead of in a row the screen has no room for.
+        <ReactionButton
+          onReact={react.onReact}
+          cooling={react.cooling}
+          board={wrap}
+          className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-20 sm:right-6 sm:bottom-6"
+        />
       )}
       <p className="sr-only" aria-live="polite">
         {latest && t('react.said', { name: name(latest.seat), words: t(`reaction.${latest.id}`) })}
       </p>
       <AnimatePresence>
         {room.phase === 'ended' && (
-          <RoomEnd room={room} game={game} you={you} send={send} name={name} react={react} />
+          <RoomEnd
+            room={room}
+            game={game}
+            you={you}
+            send={send}
+            name={name}
+            react={react}
+            said={Object.fromEntries(shown.map((r) => [r.seat, r]))}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -122,6 +136,7 @@ function RoomEnd({
   send,
   name,
   react,
+  said,
 }: {
   room: RoomState;
   game: GameState;
@@ -129,6 +144,8 @@ function RoomEnd({
   send: (m: ClientMessage) => void;
   name: (s: Seat) => string;
   react: ReactProps | null;
+  /** Reactions on screen; the card covers the seat panels, so each shows on its player's row. */
+  said: Reactions;
 }) {
   const t = useT('room');
   const num = useNum();
@@ -163,9 +180,25 @@ function RoomEnd({
         </div>
         <ul className="mt-3 flex flex-col gap-1.5">
           {game.seats.map((s) => (
-            <li key={s} className={cn('flex items-center gap-3', s === w && 'font-extrabold')}>
+            <li
+              key={s}
+              className={cn('flex min-h-10 items-center gap-3', s === w && 'font-extrabold')}
+            >
               <SeatPip seat={s} board={game.board} className="size-6" />
               <span className="flex-1 truncate font-display font-extrabold">{name(s)}</span>
+              <AnimatePresence>
+                {said[s] && (
+                  <motion.span
+                    key={said[s].at}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="origin-right"
+                  >
+                    <ReactionBubble id={said[s].id} />
+                  </motion.span>
+                )}
+              </AnimatePresence>
               <span>{num(counts[s])}</span>
             </li>
           ))}

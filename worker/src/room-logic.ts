@@ -79,8 +79,11 @@ export function newRoom(code: string): Room {
   };
 }
 
-/** The room as one socket sees it: a locked room shows a socket that has not joined no game and no names. */
-export function view(r: Room, joined = true): RoomState {
+/**
+ * The room as one socket sees it: a locked room shows a socket that has not joined no game and no names.
+ * `guests` is the number of open sockets that have not joined (people watching without a name).
+ */
+export function view(r: Room, joined = true, guests = 0): RoomState {
   const seats = SEATS.map((seat): SeatInfo => {
     const p = r.players.find((x) => x.seat === seat);
     if (p) return { seat, kind: 'human', name: p.name, connected: p.connected, level: null };
@@ -90,7 +93,7 @@ export function view(r: Room, joined = true): RoomState {
   });
   const { code, phase, hostId, game, turnDeadline } = r;
   const board = r.board ?? 'four';
-  const watchers = r.players.filter((x) => x.connected && x.seat === null).length;
+  const watchers = r.players.filter((x) => x.connected && x.seat === null).length + guests;
   const access = r.access ?? 'private';
   const look = r.look ?? DEFAULT_LOOK;
   if (!joined && access === 'locked') {
@@ -117,11 +120,21 @@ export function view(r: Room, joined = true): RoomState {
   return { code, phase, hostId, board, look, seats, game, turnDeadline, access, watchers };
 }
 
+/** Stands in for the host's player id for everyone but the host. Never '' (an unjoined socket's id). */
+export const OTHER_HOST = '-';
+
+/**
+ * The `hostId` to send `viewer` (their player id, null before join). A player id is the rejoin
+ * credential, so only the host's own sockets get the real one; a redacted '' stays ''.
+ */
+export const hostIdFor = (r: Room, viewer: string | null, shown = r.hostId) =>
+  shown === '' || viewer === r.hostId ? shown : OTHER_HOST;
+
 /** The room's row in the public list, or null when it is private or nobody is connected. No ids, no password. */
-export function listing(r: Room): RoomListing | null {
+export function listing(r: Room, guests = 0): RoomListing | null {
   const access = r.access ?? 'private';
   if (access === 'private' || !r.players.some((x) => x.connected)) return null;
-  const v = view(r);
+  const v = view(r, true, guests);
   const board = BOARDS[v.board].seats;
   const onIt = v.seats.filter((x) => board.includes(x.seat));
   return {

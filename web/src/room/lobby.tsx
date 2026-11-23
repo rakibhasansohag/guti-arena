@@ -151,10 +151,13 @@ const ACCESS_ICON = { private: Link2, public: Globe, locked: Lock } as const;
 function AccessPicker({
   room,
   isHost,
+  seated,
   send,
 }: {
   room: RoomState;
   isHost: boolean;
+  /** The server counts you as watching until you sit; in the lobby you are not. */
+  seated: boolean;
   send: (m: ClientMessage) => void;
 }) {
   const t = useT('room');
@@ -164,11 +167,12 @@ function AccessPicker({
   const [editing, setEditing] = useState(false);
   const [pw, setPw] = useState('');
   const shown = editing ? 'locked' : access;
+  const others = (room.watchers ?? 0) - (seated ? 0 : 1);
   const watchers =
-    room.watchers > 0 ? (
+    others > 0 ? (
       <span className="flex items-center gap-1.5 text-sm">
         <Eye aria-hidden="true" className="size-4" />
-        {t('watchers', { n: num(room.watchers) })}
+        {t('watchers', { n: num(others) })}
       </span>
     ) : null;
 
@@ -395,7 +399,7 @@ export function Lobby({
         <Invite code={room.code} />
       </div>
       <div className="mt-5">
-        <AccessPicker room={room} isHost={isHost} send={send} />
+        <AccessPicker room={room} isHost={isHost} seated={you.seat !== null} send={send} />
       </div>
 
       <SetupLayout board={board.id} look={look}>

@@ -209,7 +209,6 @@ function RoomEnd({
               winnerName: w === null || w === 'draw' ? '' : name(w),
               seatColour: w === null || w === 'draw' ? null : w,
               pieceCounts: Object.fromEntries(game.seats.map((s) => [s, counts[s]])),
-              roomCode: room.code,
             }}
           />
         </div>

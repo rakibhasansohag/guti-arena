@@ -62,6 +62,15 @@ export interface Room {
   look?: Look; // missing in rooms saved before looks existed: DEFAULT_LOOK
   game: GameState | null;
   turnDeadline: number | null;
+  /** Player ids and `ip:` hashes the host removed; they can't come back. The newest `BLOCKED_MAX` are kept. */
+  blocked?: string[];
+}
+
+export const BLOCKED_MAX = 50;
+
+/** Remember `keys` as removed from the room. */
+export function block(r: Room, keys: string[]) {
+  r.blocked = [...(r.blocked ?? []), ...keys].slice(-BLOCKED_MAX);
 }
 
 export function newRoom(code: string): Room {
@@ -216,6 +225,8 @@ export function parseMessage(raw: string): ClientMessage | null {
         : null;
     case 'sit':
       return isSeat(m.seat) ? { t: 'sit', seat: m.seat } : null;
+    case 'remove':
+      return isSeat(m.seat) ? { t: 'remove', seat: m.seat } : null;
     case 'set-ai':
       return isSeat(m.seat) && (m.level === null || LEVELS.includes(m.level as AiLevel))
         ? { t: 'set-ai', seat: m.seat, level: m.level as AiLevel | null }
@@ -258,6 +269,7 @@ export function handle(
   passHost(r, now);
 
   if (m.t === 'join') {
+    if (r.blocked?.includes(m.playerId)) return 'removed';
     let p = r.players.find((x) => x.id === m.playerId);
     if (!p) {
       // Someone new needs the password of a locked room; anyone already in rejoins without it.
@@ -359,6 +371,16 @@ export function handle(
     }
     case 'react':
       return p.seat === null ? 'not-seated' : null;
+    case 'remove': {
+      if (!isHost) return 'not-host';
+      if (r.phase !== 'lobby') return 'not-lobby';
+      const target = r.players.find((x) => x.seat === m.seat);
+      if (!target || target.id === r.hostId) return 'cannot-remove';
+      r.players = r.players.filter((x) => x !== target);
+      block(r, [target.id]);
+      if (r.ownerId === target.id) r.ownerId = r.hostId; // a removed owner can't take the host back
+      return null;
+    }
   }
 }
 
@@ -372,10 +394,17 @@ function setGame(r: Room, g: GameState, now: number) {
   }
 }
 
-/** Mark a player's last socket closed. The host is passed on later, by `passHost`. */
+/**
+ * A player's last socket closed. Someone without a seat is forgotten, so the saved room only holds
+ * the seated (who can rejoin mid-game), the host and the owner. The host is passed on later, by `passHost`.
+ */
 export function disconnect(r: Room, playerId: string, now: number) {
   const p = r.players.find((x) => x.id === playerId);
   if (!p) return;
+  if (p.seat === null && p.id !== r.hostId && p.id !== r.ownerId) {
+    r.players = r.players.filter((x) => x !== p);
+    return;
+  }
   p.connected = false;
   p.goneAt = now;
 }

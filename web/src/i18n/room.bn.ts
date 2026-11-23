@@ -48,6 +48,10 @@ export default {
   'seat.sit': 'এখানে বসুন',
   'seat.stand': 'আসন ছাড়ুন',
   'seat.aiFor': '{colour} আসনের এআই',
+  'seat.remove': 'সরান',
+  'seat.removeConfirm': 'আবার চাপলে সরবে',
+  'seat.removeName': '{name}-কে রুম থেকে সরান',
+  'seat.removeSure': 'আবার চাপলে {name} রুম থেকে বাদ পড়বে',
 
   'game.away': '{name} এখন নেই। ২০ সেকেন্ড পর ফিরে না আসা পর্যন্ত এআই তার হয়ে খেলবে।',
 
@@ -68,6 +72,8 @@ export default {
     'বিনা খরচের সার্ভার আজকের সীমায় পৌঁছে গেছে। কাল আবার অনলাইন রুম চলবে; এখন এআই-এর সঙ্গে খেলতে পারেন।',
   'problem.create-failed.title': 'রুম বানানো গেল না',
   'problem.create-failed.body': 'যাচাই বা সার্ভার সাড়া দেয়নি। আবার চেষ্টা করুন।',
+  'problem.removed.title': 'হোস্ট আপনাকে এই রুম থেকে সরিয়ে দিয়েছেন',
+  'problem.removed.body': 'নিজের রুম বানাতে পারেন, বা AI-এর সাথে খেলতে পারেন।',
 
   'error.not-joined': 'আগে আপনার নাম লিখুন।',
   'error.already-joined': 'এই ট্যাবে অন্য নামে যোগ দেওয়া আছে। পেজটি রিলোড করুন।',
@@ -157,9 +163,15 @@ export default {
   'rooms.emptyFilter': 'এই বাছাইয়ে এখন কোনো রুম নেই।',
   'rooms.error.title': 'রুমের তালিকা আনা যায়নি',
   'rooms.error.body': 'ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।',
+  'rooms.search.label': 'কোড বা হোস্টের নাম দিয়ে রুম খুঁজুন',
+  'rooms.search.placeholder': 'রুম কোড বা হোস্টের নাম',
+  'rooms.search.none': 'এমন কোনো চালু রুম নেই।',
+  'rooms.search.open': 'রুম {code} খুলুন',
 
   'error.need-password': 'এই রুমে ঢুকতে পাসওয়ার্ড লাগবে।',
   'error.wrong-password': 'পাসওয়ার্ড মেলেনি।',
   'error.password-required': 'আগে একটি পাসওয়ার্ড লিখুন।',
   'error.not-seated': 'শুধু আসনে বসা খেলোয়াড়রাই রিঅ্যাকশন পাঠাতে পারে।',
+  'error.removed': 'হোস্ট আপনাকে এই রুম থেকে সরিয়ে দিয়েছেন।',
+  'error.cannot-remove': 'এই আসন থেকে কাউকে সরানো যাবে না।',
 } satisfies Dict;

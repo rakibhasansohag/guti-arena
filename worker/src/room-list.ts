@@ -22,13 +22,52 @@ export function sortRooms(rows: ListRow[]): RoomListing[] {
     .map((x) => x.listing);
 }
 
-/** The one list of public and locked rooms (instance name 'all'). Each `Room` keeps its own row current. */
+/** Viewers of the live list at once; more are told to come back later. */
+const MAX_VIEWERS = 2000;
+/** Changes are pushed to viewers at most this often. */
+const PUSH_MS = 1000;
+
+/**
+ * The one list of public and locked rooms (instance name 'all'). Each `Room` keeps its own row current.
+ * The rooms page holds one WebSocket here and gets the list pushed on change, instead of polling:
+ * one request per visit, and idle viewers cost nothing (hibernation).
+ */
 export class RoomList extends DurableObject<Env> {
+  private pushing: ReturnType<typeof setTimeout> | undefined;
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec(
       'CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, listing TEXT NOT NULL, since INTEGER NOT NULL, updated INTEGER NOT NULL)',
     );
+  }
+
+  override async fetch(): Promise<Response> {
+    const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
+    if (this.ctx.getWebSockets().length >= MAX_VIEWERS) {
+      server.accept();
+      server.close(4002, 'busy');
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    this.ctx.acceptWebSocket(server);
+    server.send(JSON.stringify({ rooms: this.list() }));
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** Push the list to every viewer, at most once per `PUSH_MS`. */
+  private changed() {
+    if (this.pushing || this.ctx.getWebSockets().length === 0) return;
+    this.pushing = setTimeout(() => {
+      this.pushing = undefined;
+      const body = JSON.stringify({ rooms: this.list() });
+      for (const ws of this.ctx.getWebSockets()) {
+        try {
+          ws.send(body);
+        } catch {
+          // closing socket
+        }
+      }
+    }, PUSH_MS);
   }
 
   put(listing: RoomListing): void {
@@ -40,10 +79,12 @@ export class RoomList extends DurableObject<Env> {
       now,
       now,
     );
+    this.changed();
   }
 
   remove(code: string): void {
     this.ctx.storage.sql.exec('DELETE FROM rooms WHERE code = ?', code);
+    this.changed();
   }
 
   list(): RoomListing[] {

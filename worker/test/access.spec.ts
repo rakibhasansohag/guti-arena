@@ -1,8 +1,10 @@
 import { PASSWORD_MAX, type ClientMessage, type RoomListing } from '@guti-arena/engine';
 import { describe, expect, it } from 'vitest';
 import {
+  BLOCKED_MAX,
   OTHER_HOST,
   REACT_GAP_MS,
+  block,
   canReact,
   disconnect,
   handle,
@@ -91,9 +93,10 @@ describe('access', () => {
     expect(r.passwordHash).toBeNull();
   });
 
-  it('a locked room asks newcomers for the password; members rejoin without it', async () => {
+  it('a locked room asks newcomers for the password; seated members rejoin without it', async () => {
     const r = room();
     handle(r, 'b', { t: 'join', playerId: 'b', name: 'Bo' }, T0);
+    handle(r, 'b', { t: 'sit', seat: 2 }, T0);
     await lock(r);
     expect(await join(r, 'c')).toBe('need-password');
     expect(await join(r, 'c', 'apple')).toBe('wrong-password');
@@ -102,6 +105,9 @@ describe('access', () => {
     disconnect(r, 'b', T0);
     expect(await join(r, 'b')).toBeNull();
     expect(r.players.find((p) => p.id === 'b')!.connected).toBe(true);
+    // Someone without a seat is forgotten on leaving, so they need the password again.
+    disconnect(r, 'c', T0);
+    expect(await join(r, 'c')).toBe('need-password');
   });
 
   it('hides the game and names from a socket that has not joined a locked room', async () => {
@@ -211,5 +217,43 @@ describe('room list', () => {
     expect(codes).toEqual(['OPEN2', 'OPEN1', 'FULL1', 'PLAY2', 'PLAY1', 'DONE1']);
     const many = Array.from({ length: 60 }, (_, i) => row(`R${i}`, 'lobby', 0, i));
     expect(sortRooms(many)).toHaveLength(50);
+  });
+});
+
+describe('leaving and removing', () => {
+  it('forgets people without a seat when they leave; keeps the seated, host and owner', () => {
+    const r = room();
+    for (const id of ['b', 'c', 'd']) handle(r, id, { t: 'join', playerId: id, name: id }, T0);
+    handle(r, 'b', { t: 'sit', seat: 2 }, T0);
+    for (const id of ['b', 'c', 'd']) disconnect(r, id, T0);
+    expect(r.players.map((p) => p.id)).toEqual(['a', 'b']); // b keeps the seat to rejoin
+    handle(r, 'a', { t: 'stand' }, T0);
+    disconnect(r, 'a', T0); // the host is kept for the grace period even without a seat
+    expect(r.players.some((p) => p.id === 'a')).toBe(true);
+  });
+
+  it('the host removes a seated player in the lobby; that id cannot come back', () => {
+    const r = room();
+    handle(r, 'b', { t: 'join', playerId: 'b', name: 'Bo' }, T0);
+    handle(r, 'b', { t: 'sit', seat: 2 }, T0);
+    expect(handle(r, 'b', { t: 'remove', seat: 0 }, T0)).toBe('not-host');
+    expect(handle(r, 'a', { t: 'remove', seat: 0 }, T0)).toBe('cannot-remove'); // not the host
+    expect(handle(r, 'a', { t: 'remove', seat: 1 }, T0)).toBe('cannot-remove'); // empty seat
+    expect(handle(r, 'a', { t: 'remove', seat: 2 }, T0)).toBeNull();
+    expect(r.players.map((p) => p.id)).toEqual(['a']);
+    expect(view(r).seats[2]!.kind).toBe('empty');
+    expect(handle(r, 'b', { t: 'join', playerId: 'b', name: 'Bo' }, T0)).toBe('removed');
+    expect(parseMessage('{"t":"remove","seat":2}')).toEqual({ t: 'remove', seat: 2 });
+    expect(parseMessage('{"t":"remove","seat":7}')).toBeNull();
+  });
+
+  it('keeps only the newest blocked entries', () => {
+    const r = room();
+    block(
+      r,
+      Array.from({ length: BLOCKED_MAX + 5 }, (_, i) => `x${i}`),
+    );
+    expect(r.blocked).toHaveLength(BLOCKED_MAX);
+    expect(r.blocked![0]).toBe('x5');
   });
 });

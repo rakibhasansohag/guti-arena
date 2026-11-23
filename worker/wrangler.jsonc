@@ -23,6 +23,10 @@
       { "name": "ROOM_LIST", "class_name": "RoomList" },
     ],
   },
+  // Requests per IP per minute to /api, counted per Cloudflare location (see src/index.ts).
+  "ratelimits": [
+    { "name": "API_LIMIT", "namespace_id": "71230", "simple": { "limit": 120, "period": 60 } },
+  ],
   "exports": {
     "Room": { "type": "durable-object", "storage": "sqlite" },
     "RoomList": { "type": "durable-object", "storage": "sqlite" },

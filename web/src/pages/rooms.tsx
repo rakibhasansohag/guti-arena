@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { Bot, Eye, Lock, Plus, RefreshCw, User } from 'lucide-react';
+import { Bot, Eye, Lock, Plus, RefreshCw, Search as SearchIcon, User } from 'lucide-react';
 import {
   BOARD_IDS,
   type BoardId,
@@ -10,6 +10,7 @@ import {
   type RoomListing,
 } from '@guti-arena/engine';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useNum } from '@/game';
 import { BoardPreview } from '@/game/board-base';
 import { useT } from '@/i18n';
@@ -17,60 +18,96 @@ import { cn } from '@/lib/utils';
 import { Seo } from '@/share';
 import { CTA, SiteFooter, SiteHeader, WRAP } from '@/share/site-chrome';
 
-/** With the Worker's 2-second list cache, a change shows within 5 seconds. */
-const REFRESH_MS = 3000;
 const CARD = 'rounded-clay bg-card p-4 text-card-foreground shadow-clay sm:p-5 3xl:p-6';
 const CHIP =
   'h-11 shrink-0 rounded-full bg-chalk/70 px-4 font-display text-sm font-extrabold transition-[background-color,color,translate,box-shadow] duration-[200ms,200ms,350ms,350ms] ease-clay hover:-translate-y-0.5 hover:bg-clay/25 hover:shadow-clay active:translate-y-0 aria-pressed:bg-charcoal aria-pressed:text-chalk aria-pressed:hover:bg-charcoal sm:text-base';
+/** Room codes: 5 letters, no vowels. */
+const CODE = /^[BCDFGHJKLMNPQRSTVWXYZ]{5}$/;
+const MAX_BACKOFF_MS = 5000;
 
 type Failure = 'unavailable' | 'failed';
 const free = (r: RoomListing) => r.seats - r.seated - r.ai;
 
-/** Public and password rooms with someone in them, refreshed every few seconds while on screen. */
-export default function Rooms() {
-  const t = useT('room');
+/**
+ * The live list over one WebSocket: the server sends the rooms now and on every change, so the page
+ * costs one request per visit instead of one every few seconds. Reconnects with backoff.
+ */
+function useLiveRooms() {
   const [rooms, setRooms] = useState<RoomListing[] | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [round, setRound] = useState(0); // bumped to reconnect at once
+
+  useEffect(() => {
+    let stopped = false;
+    let attempt = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let socket: WebSocket | undefined;
+    const connect = () => {
+      setLoading(true);
+      socket = new WebSocket(
+        `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/rooms/live`,
+      );
+      let heard = false;
+      socket.onmessage = (e) => {
+        heard = true;
+        attempt = 0;
+        setRooms((JSON.parse(String(e.data)) as RoomListResponse).rooms);
+        setFailure(null);
+        setLoading(false);
+      };
+      socket.onclose = async () => {
+        if (stopped) return;
+        if (!heard) {
+          // A failed upgrade hides its HTTP status; ask the same route over plain HTTP.
+          const { status, error } = await fetch('/api/rooms/live').then(
+            async (r) => ({
+              status: r.status,
+              error: ((await r.json().catch(() => null)) as { error?: string } | null)?.error,
+            }),
+            () => ({ status: 0, error: undefined }),
+          );
+          if (stopped) return;
+          // The free plan's daily limit answers 429 or 503; 'rate-limit' is a moment's per-IP limit.
+          if (status === 503 || (status === 429 && error !== 'rate-limit')) {
+            setFailure('unavailable');
+            setLoading(false);
+            return;
+          }
+          if (status === 0) setFailure('failed');
+        }
+        setLoading(false);
+        timer = setTimeout(connect, Math.min(MAX_BACKOFF_MS, 500 * 2 ** attempt++));
+      };
+    };
+    connect();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      socket?.close();
+    };
+  }, [round]);
+
+  return { rooms, failure, loading, reload: useCallback(() => setRound((n) => n + 1), []) };
+}
+
+/** Public and password rooms with someone in them, kept current by the server. */
+export default function Rooms() {
+  const t = useT('room');
+  const { rooms, failure, loading, reload } = useLiveRooms();
   const [board, setBoard] = useState<BoardId | null>(null);
   const [openOnly, setOpenOnly] = useState(false);
+  const [query, setQuery] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/rooms');
-      // The free plan's daily Durable Object limit answers 429 or 503.
-      if (res.status === 429 || res.status === 503) return setFailure('unavailable');
-      if (!res.ok) return setFailure('failed');
-      setRooms(((await res.json()) as RoomListResponse).rooms);
-      setFailure(null);
-    } catch {
-      setFailure('failed');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Poll only while the tab is on screen; coming back refreshes at once.
-  useEffect(() => {
-    let id: ReturnType<typeof setInterval> | undefined;
-    const sync = () => {
-      clearInterval(id);
-      if (document.visibilityState !== 'visible') return;
-      void load();
-      id = setInterval(() => void load(), REFRESH_MS);
-    };
-    sync();
-    document.addEventListener('visibilitychange', sync);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener('visibilitychange', sync);
-    };
-  }, [load]);
-
+  const q = query.trim();
   const shown = (rooms ?? []).filter(
-    (r) => (!board || r.board === board) && (!openOnly || (r.phase === 'lobby' && free(r) > 0)),
+    (r) =>
+      (!board || r.board === board) &&
+      (!openOnly || (r.phase === 'lobby' && free(r) > 0)) &&
+      (!q || r.code.includes(q) || r.host.toUpperCase().includes(q)),
   );
+  // A full code that isn't listed may be a private room: offer to open it.
+  const unlisted = CODE.test(q) && !rooms?.some((r) => r.code === q) ? q : null;
 
   return (
     <>
@@ -94,7 +131,7 @@ export default function Rooms() {
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => void load()}
+                onClick={reload}
                 aria-label={t('rooms.refresh')}
                 title={t('rooms.refresh')}
                 className={cn(CTA, 'w-12 px-0 3xl:w-14 3xl:px-0')}
@@ -106,6 +143,8 @@ export default function Rooms() {
               </Button>
             </div>
           </div>
+
+          <Search query={query} onQuery={setQuery} unlisted={unlisted} />
 
           <div
             role="group"
@@ -145,12 +184,16 @@ export default function Rooms() {
                 failure === 'unavailable' ? 'problem.daily-limit.title' : 'rooms.error.title',
               )}
               body={t(failure === 'unavailable' ? 'problem.daily-limit.body' : 'rooms.error.body')}
-              retry={failure === 'failed' ? () => void load() : undefined}
+              retry={failure === 'failed' ? reload : undefined}
             />
           ) : rooms.length === 0 ? (
             <Empty title={t('rooms.empty.title')} body={t('rooms.empty.body')} />
           ) : shown.length === 0 ? (
-            <p className="font-display text-lg font-extrabold">{t('rooms.emptyFilter')}</p>
+            !unlisted && (
+              <p className="font-display text-lg font-extrabold">
+                {t(q ? 'rooms.search.none' : 'rooms.emptyFilter')}
+              </p>
+            )
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 3xl:gap-6">
               {shown.map((r) => (
@@ -162,6 +205,47 @@ export default function Rooms() {
         <SiteFooter />
       </div>
     </>
+  );
+}
+
+/** Find a room by its code (typed in capitals) or its host's name; a full unlisted code can be opened. */
+function Search({
+  query,
+  onQuery,
+  unlisted,
+}: {
+  query: string;
+  onQuery: (q: string) => void;
+  unlisted: string | null;
+}) {
+  const t = useT('room');
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <label className="relative block w-full sm:max-w-md">
+        <span className="sr-only">{t('rooms.search.label')}</span>
+        <SearchIcon
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 opacity-60"
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => onQuery(e.target.value.toUpperCase())}
+          placeholder={t('rooms.search.placeholder')}
+          maxLength={20}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          enterKeyHint="search"
+          className="h-12 rounded-full border-charcoal/25 bg-chalk pr-4 pl-12 text-base tracking-[0.12em] uppercase placeholder:tracking-normal placeholder:normal-case"
+        />
+      </label>
+      {unlisted && (
+        <Button asChild className={cn(CTA, 'sm:w-auto')}>
+          <Link to={`/r/${unlisted}`}>{t('rooms.search.open', { code: unlisted })}</Link>
+        </Button>
+      )}
+    </div>
   );
 }
 

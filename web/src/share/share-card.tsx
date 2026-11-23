@@ -9,17 +9,21 @@ export interface ShareCardResult {
   seatColour: Seat | null;
   /** Pieces left for each seat that played. */
   pieceCounts: Partial<Record<Seat, number>>;
-  roomCode?: string;
 }
 
 // Canvas cannot read CSS variables, so the DESIGN.md hex values live here too.
-const C = { earth: '#c9a27a', clay: '#b5653d', charcoal: '#2b2622', chalk: '#f4ede1' };
+const C = {
+  earth: '#c9a27a',
+  clay: '#b5653d',
+  clayDeep: '#9a4f2c',
+  charcoal: '#2b2622',
+  chalk: '#f4ede1',
+};
 const FILL: Record<Seat, string> = { 0: '#1f5fbf', 1: '#e8b923', 2: '#f7f4ec', 3: '#d1342c' };
 const W = 1200;
 const H = 630;
 const DISPLAY = '"Baloo 2", "Baloo Da 2", sans-serif';
 const BODY = 'Inter, "Anek Bangla", sans-serif';
-const HOST = 'guti.rakibhasansohag.com';
 
 /** A seat's pebble with its mark; with `logo`, a plain clay pebble for the Guti Arena mark. */
 function pebble(
@@ -85,7 +89,9 @@ function pebble(
 interface CardText {
   headline: string;
   piecesLeft: string;
-  footer: string;
+  /** An invite to play, and how to find the game: the card is an advert, with no address or name on it. */
+  promo: string;
+  search: string;
 }
 
 function draw(ctx: CanvasRenderingContext2D, r: ShareCardResult, text: CardText) {
@@ -121,8 +127,11 @@ function draw(ctx: CanvasRenderingContext2D, r: ShareCardResult, text: CardText)
   if (r.seatColour !== null) pebble(ctx, r.seatColour, W - 210, 240, 96);
 
   ctx.fillStyle = C.charcoal;
+  ctx.font = `800 32px ${DISPLAY}`;
+  ctx.fillText(text.promo, 88, H - 112, W - 176);
+  ctx.fillStyle = C.clayDeep;
   ctx.font = `400 26px ${BODY}`;
-  ctx.fillText(text.footer, 88, H - 88);
+  ctx.fillText(text.search, 88, H - 72, W - 176);
 }
 
 /** A result card for the end of a game: shown on screen, saved as PNG, or shared as a file. */
@@ -131,9 +140,8 @@ export function ShareCard({ result }: { result: ShareCardResult }) {
   const headline =
     result.seatColour === null ? t('share.draw') : t('share.wins', { name: result.winnerName });
   const piecesLeft = t('share.piecesLeft');
-  const footer = result.roomCode
-    ? `${HOST}  ·  ${t('share.room', { code: result.roomCode })}`
-    : HOST;
+  const promo = t('share.promo');
+  const search = t('share.search');
   const ref = useRef<HTMLCanvasElement>(null);
   const [canShareFile, setCanShareFile] = useState(false);
 
@@ -151,14 +159,14 @@ export function ShareCard({ result }: { result: ShareCardResult }) {
       ].map((f) => document.fonts.load(f)),
     )
       .catch(() => undefined)
-      .then(() => live && draw(ctx, result, { headline, piecesLeft, footer }));
+      .then(() => live && draw(ctx, result, { headline, piecesLeft, promo, search }));
     setCanShareFile(
       !!navigator.canShare?.({ files: [new File([], 'x.png', { type: 'image/png' })] }),
     );
     return () => {
       live = false;
     };
-  }, [result, headline, piecesLeft, footer]);
+  }, [result, headline, piecesLeft, promo, search]);
 
   const toFile = () =>
     new Promise<File | null>((resolve) =>

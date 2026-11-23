@@ -1,5 +1,5 @@
 import { env, SELF } from 'cloudflare:test';
-import { legalMoves, type ServerMessage } from '@guti-arena/engine';
+import { DEFAULT_LOOK, legalMoves, type RoomListing, type ServerMessage } from '@guti-arena/engine';
 import { describe, expect, it } from 'vitest';
 
 /** Open a room socket and collect what the server sends. */
@@ -60,6 +60,49 @@ describe('worker', () => {
     expect(await a.next()).toEqual({ t: 'error', code: 'too-big' });
     a.ws.send(JSON.stringify({ t: 'start' }));
     expect(await a.next()).toEqual({ t: 'error', code: 'need-all-seats' });
+    a.ws.close();
+  });
+
+  it('pushes the live room list over one socket', async () => {
+    const res = await SELF.fetch('https://example.com/api/rooms/live', {
+      headers: { Upgrade: 'websocket' },
+    });
+    const ws = res.webSocket!;
+    const inbox: { rooms: RoomListing[] }[] = [];
+    ws.addEventListener('message', (e) => inbox.push(JSON.parse(e.data as string)));
+    ws.accept();
+    const nth = async (n: number) => {
+      for (let i = 0; i < 300 && inbox.length < n; i++) await new Promise((r) => setTimeout(r, 10));
+      return inbox[n - 1];
+    };
+    expect(Array.isArray((await nth(1))?.rooms)).toBe(true);
+    const row: RoomListing = {
+      ...{ code: 'LVLVL', board: 'four', phase: 'lobby', access: 'public', host: 'Hasi' },
+      ...{ seated: 1, ai: 0, seats: 4, watchers: 0, look: DEFAULT_LOOK },
+    };
+    await env.ROOM_LIST.getByName('all').put(row);
+    expect((await nth(2))?.rooms.some((x) => x.code === 'LVLVL')).toBe(true);
+    await env.ROOM_LIST.getByName('all').remove('LVLVL');
+    ws.close();
+  });
+
+  it('the host removes a seated player: their socket is told and closed, the id stays out', async () => {
+    const code = 'MMRRT';
+    await env.ROOM.getByName(code).create(code);
+    const a = await connect(code);
+    a.ws.send(JSON.stringify({ t: 'join', playerId: 'host-a', name: 'Ana' }));
+    a.ws.send(JSON.stringify({ t: 'sit', seat: 0 }));
+    const b = await connect(code);
+    b.ws.send(JSON.stringify({ t: 'join', playerId: 'guest-b', name: 'Bo' }));
+    b.ws.send(JSON.stringify({ t: 'sit', seat: 2 }));
+    await b.take('state');
+    await new Promise((r) => setTimeout(r, 50));
+    a.ws.send(JSON.stringify({ t: 'remove', seat: 2 }));
+    const told = await b.take('error');
+    expect(told).toEqual({ t: 'error', code: 'removed' });
+    const back = await connect(code);
+    back.ws.send(JSON.stringify({ t: 'join', playerId: 'guest-b', name: 'Bo' }));
+    expect(await back.take('error')).toEqual({ t: 'error', code: 'removed' });
     a.ws.close();
   });
 

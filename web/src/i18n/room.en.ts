@@ -49,6 +49,10 @@ export default {
   'seat.sit': 'Sit here',
   'seat.stand': 'Leave seat',
   'seat.aiFor': 'AI for the {colour} seat',
+  'seat.remove': 'Remove',
+  'seat.removeConfirm': 'Tap again to remove',
+  'seat.removeName': 'Remove {name} from the room',
+  'seat.removeSure': 'Tap again to remove {name} for good',
 
   'game.away': '{name} is away. After 20 seconds the AI plays for them until they come back.',
 
@@ -70,6 +74,8 @@ export default {
     'The free server has reached its daily limit. Online rooms work again tomorrow; you can still play against the AI now.',
   'problem.create-failed.title': 'Could not make the room',
   'problem.create-failed.body': 'The check or the server did not answer. Please try again.',
+  'problem.removed.title': 'The host removed you from this room',
+  'problem.removed.body': 'You can make your own room or play against the AI.',
 
   'error.not-joined': 'Enter your name first.',
   'error.already-joined': 'This tab already joined as someone else. Reload the page.',
@@ -159,9 +165,15 @@ export default {
   'rooms.emptyFilter': 'No rooms match this filter right now.',
   'rooms.error.title': 'Could not load the rooms',
   'rooms.error.body': 'Check your connection and try again.',
+  'rooms.search.label': 'Find a room by its code or host',
+  'rooms.search.placeholder': 'Room code or host name',
+  'rooms.search.none': 'No live room matches that.',
+  'rooms.search.open': 'Open room {code}',
 
   'error.need-password': 'This room needs a password.',
   'error.wrong-password': 'That password is not right.',
   'error.password-required': 'Type a password first.',
   'error.not-seated': 'Only players at a seat can send reactions.',
+  'error.removed': 'The host removed you from this room.',
+  'error.cannot-remove': 'No one can be removed from that seat.',
 } satisfies Dict;

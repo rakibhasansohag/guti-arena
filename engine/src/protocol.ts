@@ -3,6 +3,7 @@ import type { AiLevel, BoardId, GameState, PointId, Seat } from './types.ts';
 // HTTP
 //   POST /api/rooms           body CreateRoomRequest, returns CreateRoomResponse
 //   GET  /api/rooms           returns RoomListResponse: public and locked rooms with someone connected
+//   GET  /api/rooms/live      upgrades to a WebSocket that sends a RoomListResponse now and on every change
 //   GET  /api/rooms/:code/ws  upgrades to a WebSocket carrying the JSON messages below
 
 /** Court surfaces and piece sets. Cosmetic only: rules never read them. */
@@ -115,6 +116,7 @@ export type ClientMessage =
   | { t: 'set-look'; look: Look } // host, lobby only; cosmetic
   | { t: 'set-access'; access: Access; password?: string } // host, lobby only; password required for 'locked'
   | { t: 'react'; id: ReactionId } // seated players only, any phase, about 1 a second
+  | { t: 'remove'; seat: Seat } // host, lobby only: the person in that seat leaves and can't come back
   | { t: 'start' }
   | { t: 'move'; from: PointId; to: PointId }
   | { t: 'end-chain' }
@@ -122,7 +124,8 @@ export type ClientMessage =
 
 /**
  * Server to client. `state` is sent after every change.
- * Error codes added for rooms: 'need-password', 'wrong-password', 'password-required', 'not-seated'.
+ * Error codes added for rooms: 'need-password', 'wrong-password', 'password-required', 'not-seated',
+ * 'removed' (the host removed this person; the socket closes), 'cannot-remove'.
  */
 export type ServerMessage =
   | { t: 'state'; room: RoomState; you: { playerId: string; seat: Seat | null } }

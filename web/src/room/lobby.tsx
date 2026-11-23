@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { Check, Eye, Globe, Link2, Lock, Share2 } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Check, Eye, Globe, Link2, Lock, Share2, UserX } from 'lucide-react';
 import {
   ACCESS,
   BOARDS,
@@ -289,6 +289,31 @@ function Invite({ code }: { code: string }) {
   );
 }
 
+/** The host's way to send someone out of the room for good: the first tap asks, the second removes. */
+function RemoveButton({ name, onRemove }: { name: string; onRemove: () => void }) {
+  const t = useT('room');
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const id = setTimeout(() => setArmed(false), 3000);
+    return () => clearTimeout(id);
+  }, [armed]);
+  return (
+    <Button
+      variant="outline"
+      aria-label={armed ? t('seat.removeSure', { name }) : t('seat.removeName', { name })}
+      onClick={() => (armed ? onRemove() : setArmed(true))}
+      className={cn(
+        'h-11 rounded-full bg-chalk px-5 font-display font-extrabold',
+        armed && 'border-clay-deep bg-clay-deep text-chalk hover:bg-clay-deep/90 hover:text-chalk',
+      )}
+    >
+      <UserX aria-hidden="true" />
+      {t(armed ? 'seat.removeConfirm' : 'seat.remove')}
+    </Button>
+  );
+}
+
 function SeatRow({
   info,
   board,
@@ -340,6 +365,9 @@ function SeatRow({
             {t('seat.sit')}
           </Button>
         )
+      )}
+      {isHost && info.kind === 'human' && !mine && (
+        <RemoveButton name={info.name} onRemove={() => send({ t: 'remove', seat })} />
       )}
       {isHost && info.kind !== 'human' && (
         <div

@@ -4,7 +4,8 @@ import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { CTA, WRAP } from '@/share/site-chrome';
 
-export type ProblemKind = 'room-not-found' | 'room-full' | 'daily-limit' | 'create-failed';
+export type ProblemKind =
+  'room-not-found' | 'room-full' | 'daily-limit' | 'create-failed' | 'removed';
 
 /** A friendly dead end with a way out: home, solo play or a new room. */
 export function Problem({ kind, onRetry }: { kind: ProblemKind; onRetry?: () => void }) {

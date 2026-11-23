@@ -7,6 +7,7 @@ import type {
 } from '@guti-arena/engine';
 import {
   CODE_RE,
+  block,
   botDueAt,
   canReact,
   disconnect,
@@ -28,6 +29,8 @@ import {
 export { RoomList } from './room-list.ts';
 
 const MAX_SOCKETS = 16;
+/** Sockets one IP may hold in a room: a family on one Wi-Fi fills a four-seat board and still watches, one script can't fill the room. */
+const MAX_PER_IP = 6;
 const MAX_MESSAGE_BYTES = 1024;
 const MAX_PER_SECOND = 10;
 const CLEANUP_MS = 30 * 60_000;
@@ -52,6 +55,18 @@ interface Attachment {
   playerId: string | null;
   /** Wrong passwords sent on this socket. */
   strikes?: number;
+  /** `ip:` + a hash of the IP and room code (never the IP itself); absent where Cloudflare sends no IP (local tests). */
+  ip?: string;
+}
+
+/** A room-scoped hash of the caller's IP, so a removed device can be kept out without storing its address. */
+async function ipKey(request: Request, code: string): Promise<string | undefined> {
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (!ip) return undefined;
+  const digest = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${code}:${ip}`)),
+  );
+  return `ip:${[...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
@@ -92,13 +107,18 @@ export class Room extends DurableObject<Env> {
     return true;
   }
 
-  override async fetch(): Promise<Response> {
+  override async fetch(request: Request): Promise<Response> {
     const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
+    const ip = this.saved ? await ipKey(request, this.saved.room.code) : undefined;
+    const sockets = this.ctx.getWebSockets();
     const reject = !this.saved
       ? 'room-not-found'
-      : this.ctx.getWebSockets().length >= MAX_SOCKETS
-        ? 'room-full'
-        : null;
+      : ip && this.saved.room.blocked?.includes(ip)
+        ? 'removed'
+        : sockets.length >= MAX_SOCKETS ||
+            (ip && sockets.filter((x) => attachmentOf(x).ip === ip).length >= MAX_PER_IP)
+          ? 'room-full'
+          : null;
     if (reject) {
       // Accepted outside the hibernation set, told why, and closed.
       server.accept();
@@ -107,7 +127,7 @@ export class Room extends DurableObject<Env> {
       return new Response(null, { status: 101, webSocket: client });
     }
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ playerId: null } satisfies Attachment);
+    server.serializeAttachment({ playerId: null, ip } satisfies Attachment);
     this.saved!.emptySince = null;
     // Everyone gets the state, so the watcher count includes this socket; it gets the redacted view.
     await this.changed();
@@ -144,6 +164,8 @@ export class Room extends DurableObject<Env> {
     const hash = pending && (await this.ctx.blockConcurrencyWhile(() => pending));
     const hostBefore = s.room.hostId;
     const id = m.t === 'join' ? m.playerId : current;
+    const removed =
+      m.t === 'remove' ? s.room.players.find((p) => p.seat === m.seat)?.id : undefined;
     const error = handle(s.room, id, m, now, hash);
     if (error) {
       send(ws, { t: 'error', code: error });
@@ -154,9 +176,26 @@ export class Room extends DurableObject<Env> {
         ws.serializeAttachment({ ...att, strikes } satisfies Attachment);
         if (strikes >= MAX_WRONG_PASSWORDS) ws.close(4001, 'wrong-password');
       }
+      if (error === 'removed') ws.close(4003, 'removed');
       return;
     }
-    if (m.t === 'join') ws.serializeAttachment({ playerId: m.playerId } satisfies Attachment);
+    if (m.t === 'join')
+      ws.serializeAttachment({ playerId: m.playerId, ip: att.ip } satisfies Attachment);
+    if (removed) {
+      // Their IPs are kept out too, so a fresh player id doesn't get them back in, unless someone
+      // still here shares the IP (one home Wi-Fi): then only the player id is blocked.
+      const all = this.ctx.getWebSockets();
+      const theirs = all.filter((x) => playerOf(x) === removed);
+      const shared = new Set(
+        all.filter((x) => playerOf(x) !== removed).map((x) => attachmentOf(x).ip),
+      );
+      const ips = theirs.flatMap((x) => attachmentOf(x).ip ?? []).filter((x) => !shared.has(x));
+      block(s.room, [...new Set(ips)]);
+      for (const x of theirs) {
+        send(x, { t: 'error', code: 'removed' });
+        x.close(4003, 'removed');
+      }
+    }
     if (m.t === 'react') {
       const seat = s.room.players.find((p) => p.id === id)?.seat;
       if (seat != null && canReact(this.reacted, id!, now)) {
@@ -318,6 +357,18 @@ export default {
   async fetch(request, env, ctx): Promise<Response> {
     const { pathname } = new URL(request.url);
     try {
+      // Per IP and Cloudflare location, before any Durable Object is touched. The firewall rule on the
+      // zone stops floods before the Worker; this is the fallback. No IP header in local tests.
+      const ip = request.headers.get('CF-Connecting-IP');
+      if (ip && !(await env.API_LIMIT.limit({ key: ip })).success) {
+        return json({ error: 'rate-limit' }, 429);
+      }
+      if (pathname === '/api/rooms/live') {
+        if (request.headers.get('Upgrade') !== 'websocket') {
+          return json({ error: 'expected-websocket' }, 426);
+        }
+        return await env.ROOM_LIST.getByName('all').fetch(request);
+      }
       if (pathname === '/api/rooms') {
         if (request.method === 'POST') return await createRoom(request, env);
         if (request.method === 'GET') return await listRooms(request, env, ctx);

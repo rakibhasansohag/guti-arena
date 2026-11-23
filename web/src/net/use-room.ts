@@ -4,7 +4,7 @@ import { playerId, saveName, savedName } from './player.ts';
 
 export type Connection = 'connecting' | 'open' | 'reconnecting';
 /** Errors that end the connection for good. */
-export type Fatal = 'room-not-found' | 'room-full' | 'daily-limit';
+export type Fatal = 'room-not-found' | 'room-full' | 'daily-limit' | 'removed';
 /** Why a locked room has not let us in yet. */
 export type Lock = 'need-password' | 'wrong-password';
 /** The latest reaction from each seat; `at` tells a repeat of the same reaction apart. */
@@ -82,7 +82,7 @@ export function useRoom(code: string): RoomConnection {
           if (m.you.playerId) setLock(null);
         } else if (m.t === 'reaction') {
           setReactions((r) => ({ ...r, [m.seat]: { id: m.id, at: Date.now() } }));
-        } else if (m.code === 'room-not-found' || m.code === 'room-full') {
+        } else if (m.code === 'room-not-found' || m.code === 'room-full' || m.code === 'removed') {
           stopped = true;
           setFatal(m.code);
         } else if (m.code === 'need-password' || m.code === 'wrong-password') {
@@ -96,11 +96,15 @@ export function useRoom(code: string): RoomConnection {
         if (stopped) return;
         if (!opened) {
           // A failed upgrade hides its HTTP status; ask the same route over plain HTTP.
-          const status = await fetch(`/api/rooms/${code}/ws`).then(
-            (r) => r.status,
-            () => 0,
+          const { status, error } = await fetch(`/api/rooms/${code}/ws`).then(
+            async (r) => ({
+              status: r.status,
+              error: ((await r.json().catch(() => null)) as { error?: string } | null)?.error,
+            }),
+            () => ({ status: 0, error: undefined }),
           );
-          if (status === 429 || status === 503) {
+          // 'rate-limit' is this IP sending too much for a moment: keep retrying with backoff.
+          if (status === 503 || (status === 429 && error !== 'rate-limit')) {
             stopped = true;
             setFatal('daily-limit');
             return;

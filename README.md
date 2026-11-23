@@ -12,7 +12,7 @@ Sholo Guti is the board game people scratch into the courtyard dirt across Bangl
 
 | Game          | Players | What it is                                                                         |
 | ------------- | ------- | ---------------------------------------------------------------------------------- |
-| Four colours  | 4       | A triangle for each player and 18 pieces a side. A Guti Arena board                |
+| Four colours  | 4       | The four-colour Sholo Guti: a triangle for each player and 18 pieces a side        |
 | Three corners | 3       | A hexagon board with 12 pieces each. A Guti Arena original                         |
 | Sholo Guti    | 2       | The classic: 16 pieces each on a 5 by 5 grid with two triangles                    |
 | Quick         | 2       | Sholo Guti without the triangles, 12 pieces each                                   |
@@ -25,15 +25,17 @@ Every game has its own guide with pictures and a move to try yourself, starting 
 
 - **Against the computer.** Pick Easy, Medium or Hard for any seat.
 - **On one phone or tablet.** Friends pass the device round the table.
-- **Online with friends.** Make a private room, send the link or the 5-letter code, and fill any empty seat with a computer player. Each turn has 30 seconds; if someone drops out, the computer covers their seat until they come back.
-- **Your own look.** Pick the court (earth, wood, nakshi kantha, chalkboard, sand, night) and the pieces (pebbles, sweets, tea cups, marbles, buttons, shells) before the game.
+- **Online with friends.** Make a room, send the link or the 5-letter code, and fill any empty seat with a computer player. Each turn has 30 seconds; if someone drops out, the computer covers their seat until they come back.
+- **Live rooms.** The host keeps a room private (link only), makes it public, or locks it with a password. Public and locked rooms show on the [live rooms page](https://guti.rakibhasansohag.com/rooms): take a free seat, find a room by its code, or watch a game in play. The host can remove a player from the lobby.
+- **Reactions.** Send a quick emoji or a short line to the table: "Nice move!", "Sorry!", "Hurry up!" and more. No free-text chat.
+- **Your own look and sound.** Pick the court (earth, wood, nakshi kantha, chalkboard, sand, night) and the pieces (pebbles, sweets, tea cups, marbles, buttons, shells) before the game. The Settings panel has separate volumes for effects, court sounds and reactions.
 
 ## Rules in a minute
 
 1. Each player has pieces of one colour: blue, yellow, white or red. Each colour also has a mark (dot, ring, cross, diamond), so you can tell them apart without colour.
 2. On your turn, move one piece one step along a line to an empty point.
 3. To capture, jump over a rival piece to the empty point right behind it, along one straight line. You may keep jumping with the same piece, or stop.
-4. A colour with no pieces left is out. The last colour on the board wins. If 40 rounds pass with no capture, the colour with the most pieces wins.
+4. A colour with no pieces left is out. The last colour on the board wins. If 40 rounds pass with no capture, the colour with the most pieces wins; a tie is a draw.
 
 Bagh-chal and Lau kata kati differ a little; their guides explain how.
 
@@ -68,9 +70,9 @@ The game opens at http://localhost:5173. The online-room server runs alongside i
 
 ## Credits
 
-Made by Rakib Hasan Sohag.
+Made by [Rakib Hasan Sohag](https://rakibhasansohag.com) ([GitHub](https://github.com/rakibhasansohag)).
 
-Sound effects and the court ambience were made for this project with [ElevenLabs](https://elevenlabs.io) sound effects, on a paid plan that allows commercial use. No music. The ground texture is from [Poly Haven](https://polyhaven.com), CC0. Reaction emoji: [Noto Emoji](https://github.com/googlefonts/noto-emoji) by Google, SVGs from `2D/svg`, Apache License 2.0.
+Sound effects and the court ambience were made for this project with [ElevenLabs](https://elevenlabs.io) sound effects, on a paid plan that allows commercial use. No music. The ground texture is from [Poly Haven](https://polyhaven.com), CC0. Reaction emoji: [Noto Emoji](https://github.com/googlefonts/noto-emoji) by Google, Apache License 2.0.
 
 ## License
 

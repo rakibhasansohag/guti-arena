@@ -7,12 +7,17 @@ import {
   endChain,
   parseLook,
   DEFAULT_LOOK,
+  ACCESS,
+  PASSWORD_MAX,
+  REACTIONS,
   type Access,
   type AiLevel,
   type BoardId,
   type ClientMessage,
   type GameState,
   type Look,
+  type ReactionId,
+  type RoomListing,
   type RoomState,
   type Seat,
   type SeatInfo,
@@ -24,6 +29,8 @@ export const COVER_AFTER_MS = 20_000;
 /** How long the host can be gone (phone share sheet, reload) before another player is made host. */
 export const HOST_GRACE_MS = 20_000;
 export const NAME_MAX = 20;
+/** A player's reactions closer together than this are dropped. */
+export const REACT_GAP_MS = 1200;
 export const CODE_LETTERS = 'BCDFGHJKLMNPQRSTVWXYZ';
 export const CODE_RE = /^[BCDFGHJKLMNPQRSTVWXYZ]{5}$/;
 
@@ -49,6 +56,8 @@ export interface Room {
   players: Player[]; // join order, used to pass the host on
   ai: (AiLevel | null)[]; // per seat
   access?: Access; // missing in rooms saved before access existed: 'private'
+  /** `salt:sha256hex` of the password while access is 'locked'; never sent to anyone. */
+  passwordHash?: string | null;
   board?: BoardId; // missing in rooms saved before boards existed: 'four'
   look?: Look; // missing in rooms saved before looks existed: DEFAULT_LOOK
   game: GameState | null;
@@ -70,7 +79,8 @@ export function newRoom(code: string): Room {
   };
 }
 
-export function view(r: Room): RoomState {
+/** The room as one socket sees it: a locked room shows a socket that has not joined no game and no names. */
+export function view(r: Room, joined = true): RoomState {
   const seats = SEATS.map((seat): SeatInfo => {
     const p = r.players.find((x) => x.seat === seat);
     if (p) return { seat, kind: 'human', name: p.name, connected: p.connected, level: null };
@@ -81,19 +91,72 @@ export function view(r: Room): RoomState {
   const { code, phase, hostId, game, turnDeadline } = r;
   const board = r.board ?? 'four';
   const watchers = r.players.filter((x) => x.connected && x.seat === null).length;
+  const access = r.access ?? 'private';
+  const look = r.look ?? DEFAULT_LOOK;
+  if (!joined && access === 'locked') {
+    const empty = SEATS.map((seat): SeatInfo => ({
+      seat,
+      kind: 'empty',
+      name: '',
+      connected: false,
+      level: null,
+    }));
+    return {
+      code,
+      phase,
+      hostId: '',
+      board,
+      look,
+      seats: empty,
+      game: null,
+      turnDeadline: null,
+      access,
+      watchers,
+    };
+  }
+  return { code, phase, hostId, board, look, seats, game, turnDeadline, access, watchers };
+}
+
+/** The room's row in the public list, or null when it is private or nobody is connected. No ids, no password. */
+export function listing(r: Room): RoomListing | null {
+  const access = r.access ?? 'private';
+  if (access === 'private' || !r.players.some((x) => x.connected)) return null;
+  const v = view(r);
+  const board = BOARDS[v.board].seats;
+  const onIt = v.seats.filter((x) => board.includes(x.seat));
   return {
-    code,
-    phase,
-    hostId,
-    board,
-    look: r.look ?? DEFAULT_LOOK,
-    seats,
-    game,
-    turnDeadline,
-    access: r.access ?? 'private',
-    watchers,
+    code: v.code,
+    board: v.board,
+    phase: v.phase,
+    access,
+    host: r.players.find((x) => x.id === r.hostId)?.name ?? '',
+    seated: onIt.filter((x) => x.kind === 'human').length,
+    ai: onIt.filter((x) => x.kind === 'ai').length,
+    seats: board.length,
+    watchers: v.watchers,
+    look: v.look,
   };
 }
+
+/** True when `playerId` may react now (records the time); false inside the throttle gap. */
+export function canReact(last: Map<string, number>, playerId: string, now: number): boolean {
+  const prev = last.get(playerId);
+  if (prev !== undefined && now - prev < REACT_GAP_MS) return false;
+  last.set(playerId, now);
+  return true;
+}
+
+/** Salted SHA-256 of a room password, stored as `salt:hex`. Pass the salt of the stored hash to check one. */
+export async function hashPassword(password: string, salt: string): Promise<string> {
+  const data = new TextEncoder().encode(`${salt}:${password}`);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+  return `${salt}:${[...digest].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+export const newSalt = () =>
+  [...crypto.getRandomValues(new Uint8Array(16))]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 
 const graphemes = new Intl.Segmenter();
 
@@ -123,8 +186,20 @@ export function parseMessage(raw: string): ClientMessage | null {
   if (typeof m !== 'object' || m === null) return null;
   switch (m.t) {
     case 'join':
-      return isStr(m.playerId, 64) && typeof m.name === 'string'
-        ? { t: 'join', playerId: m.playerId, name: m.name }
+      if (!isStr(m.playerId, 64) || typeof m.name !== 'string') return null;
+      if (m.password === undefined) return { t: 'join', playerId: m.playerId, name: m.name };
+      return typeof m.password === 'string'
+        ? { t: 'join', playerId: m.playerId, name: m.name, password: m.password }
+        : null;
+    case 'set-access':
+      if (!(ACCESS as readonly unknown[]).includes(m.access)) return null;
+      if (m.password === undefined) return { t: 'set-access', access: m.access as Access };
+      return typeof m.password === 'string'
+        ? { t: 'set-access', access: m.access as Access, password: m.password }
+        : null;
+    case 'react':
+      return (REACTIONS as readonly unknown[]).includes(m.id)
+        ? { t: 'react', id: m.id as ReactionId }
         : null;
     case 'sit':
       return isSeat(m.seat) ? { t: 'sit', seat: m.seat } : null;
@@ -156,13 +231,15 @@ const seatTaken = (r: Room, seat: Seat) =>
 
 /**
  * Apply one client message from `playerId` (null before `join`). Mutates `r`.
- * Returns an error code, or null when the room changed.
+ * `hash` is `hashPassword` of the message's password (for `join`, with the stored hash's salt), else null.
+ * Returns an error code, or null when the room changed (for `react`: when it may be shown).
  */
 export function handle(
   r: Room,
   playerId: string | null,
   m: ClientMessage,
   now: number,
+  hash: string | null = null,
 ): string | null {
   r.ownerId ||= r.hostId; // rooms saved before owners existed (or still empty)
   passHost(r, now);
@@ -170,14 +247,21 @@ export function handle(
   if (m.t === 'join') {
     let p = r.players.find((x) => x.id === m.playerId);
     if (!p) {
+      // Someone new needs the password of a locked room; anyone already in rejoins without it.
+      if (r.access === 'locked') {
+        if (!m.password) return 'need-password';
+        if (!r.passwordHash || hash !== r.passwordHash) return 'wrong-password';
+      }
       p = { id: m.playerId, name: '', seat: null, connected: true, goneAt: null };
       r.players.push(p);
     }
     p.name = cleanName(m.name);
     p.connected = true;
     p.goneAt = null;
-    if (r.hostId === '') r.ownerId = r.hostId = p.id; // first joiner owns the room
-    else if (p.id === r.ownerId) r.hostId = p.id; // the owner is back
+    if (r.hostId === '')
+      r.ownerId = r.hostId = p.id; // first joiner owns the room
+    else if (p.id === r.ownerId)
+      r.hostId = p.id; // the owner is back
     else passHost(r, now); // the host's grace may have run out while nobody else was here
     return null;
   }
@@ -247,9 +331,21 @@ export function handle(
       r.game = null;
       r.turnDeadline = null;
       return null;
-    case 'set-access':
+    case 'set-access': {
+      if (!isHost) return 'not-host';
+      if (r.phase !== 'lobby') return 'not-lobby';
+      if (m.access === 'locked') {
+        const n = m.password?.length ?? 0;
+        if (n < 1 || n > PASSWORD_MAX || !hash) return 'password-required';
+        r.passwordHash = hash;
+      } else {
+        r.passwordHash = null;
+      }
+      r.access = m.access;
+      return null;
+    }
     case 'react':
-      return 'bad-message'; // placeholder until chat A builds them
+      return p.seat === null ? 'not-seated' : null;
   }
 }
 

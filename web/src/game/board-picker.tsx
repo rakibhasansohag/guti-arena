@@ -4,6 +4,7 @@ import { guidePath } from '@/share/guides';
 import { BoardPreview } from './board-base.tsx';
 import { TILE } from './look-picker.tsx';
 import { useLook } from './look.ts';
+import { play } from './sound.ts';
 
 /** Pick the game: one card per board. `onChange` null shows the choice read-only (room guests). */
 export function BoardPicker({
@@ -31,10 +32,13 @@ export function BoardPicker({
               key={id}
               type="button"
               aria-pressed={value === id}
-              onClick={() => onChange(id)}
+              onClick={() => {
+                play('click');
+                onChange(id);
+              }}
               className={TILE}
             >
-              <BoardPreview board={id} look={look} className="aspect-square w-full" />
+              <BoardPreview board={id} look={look} plain className="aspect-square w-full" />
               <span className="text-sm sm:text-base">{t(`boards.${id}`)}</span>
               <span className="font-sans text-xs font-normal">{t(`boards.${id}.tag`)}</span>
             </button>

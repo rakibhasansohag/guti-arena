@@ -4,6 +4,7 @@ export default {
   // Shared chrome
   'nav.howToPlay': 'How to play',
   'nav.home': 'Guti Arena home',
+  'nav.rooms': 'Live rooms',
   'cta.play': 'Play now',
   'cta.friends': 'Play with friends',
   'footer.madeBy': 'Made by',

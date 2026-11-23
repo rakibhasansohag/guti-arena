@@ -35,6 +35,7 @@ const HowToPlay = page(() => import('@/pages/how-to-play'));
 const Guide = page(() => import('@/pages/guide'));
 const Play = page(() => import('@/pages/play'));
 const Room = page(() => import('@/pages/room'));
+const Rooms = page(() => import('@/pages/rooms'));
 
 /** A link to another page starts it at the top; Back and Forward keep the browser's own position. */
 function ScrollToTop() {
@@ -58,6 +59,7 @@ export function AppRoutes() {
         <Route path="/how-to-play" element={<HowToPlay />} />
         <Route path="/how-to-play/:game" element={<Guide />} />
         <Route path="/play" element={<Play />} />
+        <Route path="/rooms" element={<Rooms />} />
         <Route path="/r/:code" element={<Room />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

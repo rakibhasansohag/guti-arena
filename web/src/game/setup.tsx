@@ -23,7 +23,7 @@ export function SetupLayout({
   });
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-start lg:gap-6 3xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
-      <aside className="sticky top-2 z-10 rounded-clay bg-card/95 p-3 text-card-foreground shadow-clay-lift backdrop-blur-sm lg:top-6 lg:order-2 lg:p-5">
+      <aside className="sticky top-2 z-10 rounded-clay bg-card p-3 text-card-foreground shadow-clay-lift lg:top-6 lg:order-2 lg:p-5">
         <BoardPreview
           board={board}
           look={look}

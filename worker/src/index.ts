@@ -1,12 +1,21 @@
 import { DurableObject } from 'cloudflare:workers';
-import type { CreateRoomRequest, ServerMessage } from '@guti-arena/engine';
+import type {
+  ClientMessage,
+  CreateRoomRequest,
+  RoomListResponse,
+  ServerMessage,
+} from '@guti-arena/engine';
 import {
   CODE_RE,
   botDueAt,
+  canReact,
   disconnect,
   handle,
+  hashPassword,
   hostDueAt,
+  listing,
   newRoom,
+  newSalt,
   parseMessage,
   passHost,
   randomCode,
@@ -15,19 +24,30 @@ import {
   type Room as RoomData,
 } from './room-logic.ts';
 
-const MAX_SOCKETS = 8;
+export { RoomList } from './room-list.ts';
+
+const MAX_SOCKETS = 16;
 const MAX_MESSAGE_BYTES = 1024;
 const MAX_PER_SECOND = 10;
 const CLEANUP_MS = 30 * 60_000;
+const MAX_WRONG_PASSWORDS = 5;
+/** Re-push an unchanged listing this often, so the list's 35-minute expiry never drops a live room. */
+const LIST_REFRESH_MS = 10 * 60_000;
+const LIST_CACHE_SECONDS = 5;
 
 interface Saved {
   room: RoomData;
   /** When the last socket closed (or the room was created); null while anyone is connected. */
   emptySince: number | null;
+  /** JSON of the listing last pushed to the room list, and when; absent while not listed. */
+  listed?: string;
+  listedAt?: number;
 }
 
 interface Attachment {
   playerId: string | null;
+  /** Wrong passwords sent on this socket. */
+  strikes?: number;
 }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
@@ -38,13 +58,18 @@ const send = (ws: WebSocket, m: ServerMessage) => {
     // Socket already closing; its close handler cleans up.
   }
 };
-const playerOf = (ws: WebSocket) =>
-  (ws.deserializeAttachment() as Attachment | null)?.playerId ?? null;
+const attachmentOf = (ws: WebSocket) =>
+  (ws.deserializeAttachment() as Attachment | null) ?? { playerId: null };
+const playerOf = (ws: WebSocket) => attachmentOf(ws).playerId;
 
 /** One instance per room, named by its code. Sockets use the Hibernation API so idle rooms cost nothing. */
 export class Room extends DurableObject<Env> {
   private saved: Saved | null = null;
   private rates = new Map<WebSocket, { start: number; n: number }>();
+  /** Last reaction per player, for the throttle. Lost on hibernation, which is harmless. */
+  private reacted = new Map<string, number>();
+  /** One stub, so pushes from this room reach the list in order. */
+  private list = this.env.ROOM_LIST.getByName('all');
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -79,7 +104,11 @@ export class Room extends DurableObject<Env> {
     server.serializeAttachment({ playerId: null } satisfies Attachment);
     this.saved!.emptySince = null;
     await this.commit();
-    send(server, { t: 'state', room: view(this.saved!.room), you: { playerId: '', seat: null } });
+    send(server, {
+      t: 'state',
+      room: view(this.saved!.room, false),
+      you: { playerId: '', seat: null },
+    });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -99,15 +128,37 @@ export class Room extends DurableObject<Env> {
     const m = parseMessage(raw);
     if (!m) return send(ws, { t: 'error', code: 'bad-message' });
 
-    const current = playerOf(ws);
-    if (m.t === 'join') {
-      if (current !== null && current !== m.playerId) {
-        return send(ws, { t: 'error', code: 'already-joined' });
-      }
-      ws.serializeAttachment({ playerId: m.playerId } satisfies Attachment);
+    const att = attachmentOf(ws);
+    const current = att.playerId;
+    if (m.t === 'join' && current !== null && current !== m.playerId) {
+      return send(ws, { t: 'error', code: 'already-joined' });
     }
-    const error = handle(s.room, m.t === 'join' ? m.playerId : current, m, now);
-    if (error) return send(ws, { t: 'error', code: error });
+    // Hashing is async; block other events meanwhile so messages keep their order.
+    const pending = passwordHash(m, s.room);
+    const hash = pending && (await this.ctx.blockConcurrencyWhile(() => pending));
+    const hostBefore = s.room.hostId;
+    const id = m.t === 'join' ? m.playerId : current;
+    const error = handle(s.room, id, m, now, hash);
+    if (error) {
+      send(ws, { t: 'error', code: error });
+      if (error === 'wrong-password') {
+        const strikes = (att.strikes ?? 0) + 1;
+        ws.serializeAttachment({ ...att, strikes } satisfies Attachment);
+        if (strikes >= MAX_WRONG_PASSWORDS) ws.close(4001, 'wrong-password');
+      }
+      return;
+    }
+    if (m.t === 'join') ws.serializeAttachment({ playerId: m.playerId } satisfies Attachment);
+    if (m.t === 'react') {
+      const seat = s.room.players.find((p) => p.id === id)?.seat;
+      if (seat != null && canReact(this.reacted, id!, now)) {
+        const locked = s.room.access === 'locked';
+        for (const x of this.ctx.getWebSockets()) {
+          if (!locked || playerOf(x) !== null) send(x, { t: 'reaction', seat, id: m.id });
+        }
+      }
+      if (s.room.hostId === hostBefore) return; // reactions are not saved
+    }
     await this.changed();
   }
 
@@ -129,6 +180,7 @@ export class Room extends DurableObject<Env> {
     const now = Date.now();
     if (s.emptySince !== null && now >= s.emptySince + CLEANUP_MS) {
       if (this.ctx.getWebSockets().length === 0) {
+        if (s.listed !== undefined) await this.list.remove(s.room.code).catch(() => {});
         this.saved = null;
         await this.ctx.storage.deleteAll(); // also deletes the alarm on this compatibility date
         return;
@@ -141,14 +193,42 @@ export class Room extends DurableObject<Env> {
     else await this.commit();
   }
 
-  /** Save, tell every socket, and schedule the next server move or cleanup. */
+  /** Save, tell every socket, keep the room list current, and schedule the next server move or cleanup. */
   private async changed() {
     await this.commit();
-    const room = view(this.saved!.room);
+    const s = this.saved!;
+    const room = view(s.room);
+    const hidden = view(s.room, false);
     for (const ws of this.ctx.getWebSockets()) {
-      const playerId = playerOf(ws) ?? '';
-      const seat = this.saved!.room.players.find((p) => p.id === playerId)?.seat ?? null;
-      send(ws, { t: 'state', room, you: { playerId, seat } });
+      const playerId = playerOf(ws);
+      const seat = s.room.players.find((p) => p.id === playerId)?.seat ?? null;
+      send(ws, {
+        t: 'state',
+        room: playerId === null ? hidden : room,
+        you: { playerId: playerId ?? '', seat },
+      });
+    }
+    await this.syncListing();
+  }
+
+  /** Push this room's listing when a listed field changed (or it is due a refresh); remove it when unlisted. */
+  private async syncListing() {
+    const s = this.saved!;
+    const row = listing(s.room);
+    const json = row ? JSON.stringify(row) : undefined;
+    const now = Date.now();
+    const fresh = json === undefined || now - (s.listedAt ?? 0) < LIST_REFRESH_MS;
+    if (json === s.listed && fresh) return;
+    const before = { listed: s.listed, listedAt: s.listedAt };
+    // Set first, so a change arriving during the call compares against this push.
+    s.listed = json;
+    s.listedAt = now;
+    try {
+      if (row) await this.list.put(row);
+      else await this.list.remove(s.room.code);
+    } catch {
+      // The list is a convenience: a failed push never breaks the room. The next change retries.
+      Object.assign(s, before);
     }
   }
 
@@ -164,6 +244,30 @@ export class Room extends DurableObject<Env> {
     if (Number.isFinite(next)) await this.ctx.storage.setAlarm(next);
     else await this.ctx.storage.deleteAlarm();
   }
+}
+
+/** The hash `handle` needs for a password in this message, or null when there is nothing to hash. */
+function passwordHash(m: ClientMessage, r: RoomData): Promise<string | null> | null {
+  if (m.t === 'set-access' && m.access === 'locked' && m.password) {
+    return hashPassword(m.password, newSalt());
+  }
+  if (m.t === 'join' && m.password && r.passwordHash) {
+    return hashPassword(m.password, r.passwordHash.split(':')[0]!);
+  }
+  return null;
+}
+
+/** The public room list, cached for a few seconds per data centre under one fixed key. */
+async function listRooms(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const key = new Request(new URL('/api/rooms/__list', request.url).toString());
+  const hit = await caches.default.match(key);
+  if (hit) return hit;
+  const body: RoomListResponse = { rooms: await env.ROOM_LIST.getByName('all').list() };
+  const res = Response.json(body, {
+    headers: { 'cache-control': `public, max-age=${LIST_CACHE_SECONDS}` },
+  });
+  ctx.waitUntil(caches.default.put(key, res.clone()));
+  return res;
 }
 
 async function createRoom(request: Request, env: Env): Promise<Response> {
@@ -199,13 +303,13 @@ async function createRoom(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const { pathname } = new URL(request.url);
     try {
       if (pathname === '/api/rooms') {
-        return request.method === 'POST'
-          ? await createRoom(request, env)
-          : json({ error: 'method-not-allowed' }, 405);
+        if (request.method === 'POST') return await createRoom(request, env);
+        if (request.method === 'GET') return await listRooms(request, env, ctx);
+        return json({ error: 'method-not-allowed' }, 405);
       }
       const ws = pathname.match(/^\/api\/rooms\/([A-Za-z]{5})\/ws$/);
       if (ws) {

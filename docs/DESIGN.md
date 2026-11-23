@@ -56,15 +56,22 @@ Text on clay uses `clay-deep` (`#9A4F2C`, 5.1:1 with chalk). Plain `clay` is 3.7
 
 ## Motion
 
-| What                                        | Timing                                                                     |
-| ------------------------------------------- | -------------------------------------------------------------------------- |
-| Colour fades                                | 200 ms ease-out                                                            |
-| UI state changes (open, close, tabs, steps) | 300 to 400 ms, `ease-clay` = `cubic-bezier(.22,1,.36,1)`                   |
-| Piece move                                  | 350 ms ease-out, then a 120 ms settle                                      |
-| Capture                                     | 450 ms arc jump, then the captured piece scales down and fades over 250 ms |
-| Turn timer                                  | Ring drains linearly; pulses in the last 5 seconds                         |
+| What                                        | Timing                                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Colour fades                                | 200 ms ease-out                                                                       |
+| UI state changes (open, close, tabs, steps) | 300 to 400 ms, `ease-clay` = `cubic-bezier(.22,1,.36,1)`                              |
+| Piece move                                  | 350 ms ease-out, then a 120 ms settle                                                 |
+| Capture                                     | 450 ms arc jump, then the captured piece scales down and fades over 250 ms            |
+| Turn timer                                  | Ring drains linearly; pulses in the last 5 seconds                                    |
+| Look change (court, scene)                  | 250 ms opacity crossfade, ease-out: the new court and page scene fade in over the old |
 
-Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and others). Accordions animate their height and tabs crossfade; nothing snaps. Under `prefers-reduced-motion`, everything is instant or fade-only (a global rule in `tokens.css` already shortens CSS transitions; Motion components should check `useReducedMotion`).
+Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and others). Accordions animate their height and tabs crossfade; nothing snaps. Under `prefers-reduced-motion`, everything is instant or fade-only (a global rule in `tokens.css` already shortens CSS transitions). On game pages Motion follows the player's **Reduce motion** setting (device, on, off; `motionPolicy` in `web/src/game/settings.ts`, applied by `Scene` and `GameBoard` through `MotionConfig`).
+
+### Look changes stay fast
+
+- `BoardPreview` is memoised and draws each seat's piece once in `<defs>`, placing it with `<use>`: a new piece set redraws four pieces per board, not all of them.
+- Board-picker thumbnails are `plain`: no wobble filter (invisible at that size) and no crossfade. Only the big preview and the playable board use the filter.
+- The sticky preview card is solid `bg-card`: no backdrop blur over the scene.
 
 ### Turn guidance on the board
 
@@ -110,8 +117,8 @@ Players can change the look of the court (the board surface and the page around 
 - **Setup** (`/play` and the room lobby, `SetupLayout` in `web/src/game/setup.tsx`): the choices in one card (game, seats, court, pieces) and a live preview of the exact game they make (`BoardPreview`: the chosen board at its start position in the chosen look). From `lg` the preview is a sticky column on the right; on phones it sticks to the top while the choices scroll. The start button sticks to the bottom of the screen.
 - **Game cards** (`BoardPicker`): one picture tile per game with its name and "players · pieces" tag. The game sets the player count; every seat of a board plays, filled by a person or an AI.
 - **Tiles and segments:** picture tiles (`TILE`) lift 4 px with a clay tint and shadow on hover and take a 3 px charcoal ring when chosen; pill segments (`SEGMENT`) lift 2 px with a clay tint and shadow on hover.
-- **Seat panels** sit outside the board, never over it: a row above the board and a row below, at every screen size. Four seats put two panels in each row, three put one above and two below, two put one above and one below (yours below). A panel shows the seat's piece with the timer ring, the name, an AI or away tag and the piece count; the active one lifts with a clay ring.
-- **Board size:** the view box hugs each board (`viewOf` in `board-view.ts`), so tall two-player boards use a phone's height. The board is as wide as the screen allows while panels and status still fit the screen height.
+- **Seat panels** sit outside the board, never over it. In portrait: a row above the board and a row below. In landscape from `sm` (desktop, tablets, a turned phone): the board fills the height under the header and the panels stand in a column on each side, the top row's seats on the left and yours on the right. Four seats put two panels in each row, three put one above and two below, two put one above and one below (yours below). A panel shows the seat's piece with the timer ring, the name, an AI or away tag and the piece count; the active one lifts with a clay ring.
+- **Board size:** the view box hugs each board (`viewOf` in `board-view.ts`), so tall two-player boards use a phone's height. In portrait the board is as wide as the screen allows while panels and status still fit the screen height; in landscape it is as tall as the screen allows (`100dvh - 9rem`) while leaving the side columns about 30rem between them.
 
 ## Shared pieces
 
@@ -133,11 +140,24 @@ Players can change the look of the court (the board surface and the page around 
 - Move behaviour: the Lichess board (behaviour only; its code is GPL, do not copy it).
 - Decorative edges: [nakshi kantha stitch borders](https://www.aramcoworld.com/articles/2025/ma25/nakshi-kantha-tradition-and-identity-in-every-stitch).
 
+## Sound
+
+Every clip was made with ElevenLabs sound effects (`eleven_text_to_sound_v3`) for this game: clay and stone pieces on swept earth, wood, and a village courtyard crowd. **No music anywhere**: no stings, melodies or instruments, in effects or ambience.
+
+- **Effects** (`web/public/sounds/<name>.mp3`, one per `Sound`): mono MP3 96 kbps, silence trimmed, peaks about -1.5 dBFS with RMS capped at -20 dB so long clips (crowd cheer) do not outshout short knocks. `move`, `capture` and `chain` play with a random ±3% pitch so repeats sound handmade.
+- **Ambience** (`web/public/sounds/ambience/<court>.mp3`): a seamless 30 s loop per court (village afternoon, indoors with a ceiling fan, home courtyard, schoolyard after class, beach, crickets at night), mono MP3 64 kbps, about -34 LUFS: always well under the effects. Loaded only when the ambience slider is above zero; follows the court with a 1 s crossfade; pauses while the tab is hidden.
+- **Engine** (`web/src/game/sound.ts`): Web Audio, one `AudioContext` started on the first tap or key press (nothing plays before it). Effects are fetched and decoded once after that tap. Channels: master, effects, ambience, reactions; plays overlap, so a capture chain never cuts itself off. Volumes map to gain squared, so the slider feels even. If audio is blocked the game is silent, never broken.
+
+## Settings
+
+The gear in `GameHeader` (every game page, rooms included) opens the settings; holding it for half a second mutes or unmutes at once, and a small clay badge on the gear shows when sound is off. The panel is a bottom sheet on phones and a side sheet from the right from `sm`; it uses the clay card, `SEGMENT` pills, chunky clay slider tracks with a chalk pebble thumb, and on/off pills with a pebble knob. Each slider shows its value and plays a sample of its channel when let go.
+
+Saved per device as one object in `localStorage` under `settings` (`web/src/game/settings.ts`, `useSettings()`): master 80, effects 80, ambience 0, reactions 70 (0 to 100), mute, reaction bubbles (on: hides other players' bubbles when off, read with `useReactionBubbles()`), vibration (shown only where the device can buzz: a short buzz on a capture and on your turn) and reduce motion (device, on, off). The old `muted` key is migrated once.
+
 ## Free assets
 
-- Sound: Kenney [Casino Audio](https://kenney.nl/assets/casino-audio) and [Interface Sounds](https://kenney.nl/assets/interface-sounds), CC0.
 - Ground texture: Poly Haven [dirt floor](https://polyhaven.com/a/dirt_floor), CC0, 1K size.
 
 ## Never
 
-No betting, wagering, coins, chips or money imagery anywhere, in copy or in art. Casino Audio is used for its clicks and clacks only.
+No betting, wagering, coins, chips or money imagery anywhere, in copy or in art, and no casino sounds. No music in any audio.

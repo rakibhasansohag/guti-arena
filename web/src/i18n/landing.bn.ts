@@ -4,6 +4,7 @@ export default {
   // Shared chrome
   'nav.howToPlay': 'খেলার নিয়ম',
   'nav.home': 'গুটি অ্যারেনা হোম',
+  'nav.rooms': 'লাইভ রুম',
   'cta.play': 'এখনই খেলুন',
   'cta.friends': 'বন্ধুদের সঙ্গে খেলুন',
   'footer.madeBy': 'বানিয়েছেন',

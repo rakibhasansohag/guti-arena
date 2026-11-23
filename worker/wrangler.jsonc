@@ -16,11 +16,15 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],
   },
-  // One SQLite-backed Durable Object per room.
+  // One SQLite-backed Durable Object per room, and one (named 'all') holding the public room list.
   "durable_objects": {
-    "bindings": [{ "name": "ROOM", "class_name": "Room" }],
+    "bindings": [
+      { "name": "ROOM", "class_name": "Room" },
+      { "name": "ROOM_LIST", "class_name": "RoomList" },
+    ],
   },
   "exports": {
     "Room": { "type": "durable-object", "storage": "sqlite" },
+    "RoomList": { "type": "durable-object", "storage": "sqlite" },
   },
 }

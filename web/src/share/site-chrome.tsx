@@ -48,6 +48,16 @@ export function SiteHeader() {
         >
           {t('nav.howToPlay')}
         </Link>
+        <Link
+          to="/rooms"
+          className="hidden items-center gap-1.5 bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_2px] bg-bottom-left bg-no-repeat pb-0.5 font-display font-extrabold whitespace-nowrap transition-[background-size] duration-300 ease-clay hover:bg-[length:100%_2px] sm:flex"
+        >
+          <span
+            aria-hidden="true"
+            className="size-2 rounded-full bg-clay-deep motion-safe:animate-pulse"
+          />
+          {t('nav.rooms')}
+        </Link>
         <LangSwitch />
         <Link
           to="/play"
@@ -99,6 +109,9 @@ export function SiteFooter() {
             className={cn(link, 'decoration-chalk/40 hover:decoration-chalk')}
           >
             {t('nav.howToPlay')}
+          </Link>
+          <Link to="/rooms" className={cn(link, 'decoration-chalk/40 hover:decoration-chalk')}>
+            {t('nav.rooms')}
           </Link>
           <a href={REPO_URL} className={cn(link, 'decoration-chalk/40 hover:decoration-chalk')}>
             {t('footer.source')}

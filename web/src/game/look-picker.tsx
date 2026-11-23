@@ -1,16 +1,24 @@
-import { useId } from 'react';
-import { COURTS, PIECE_SETS, type CourtId, type Look, type Seat } from '@guti-arena/engine';
+import { memo, useId } from 'react';
+import {
+  COURTS,
+  PIECE_SETS,
+  type CourtId,
+  type Look,
+  type PieceSetId,
+  type Seat,
+} from '@guti-arena/engine';
 import { useT } from '@/i18n';
 import { Guti } from '@/share/guti';
 import { CourtGround } from './court.tsx';
 import { COURT } from './look.ts';
+import { play } from './sound.ts';
 
 const SEATS: Seat[] = [0, 1, 2, 3];
 /** A picture tile of a picker (use with `aria-pressed`): lifts on hover, ringed when chosen. */
 export const TILE =
   'flex flex-col items-center gap-1 rounded-2xl bg-chalk/70 p-1.5 font-display text-xs font-extrabold leading-tight text-charcoal ring-charcoal transition-[translate,box-shadow,background-color] duration-[350ms,350ms,200ms] ease-clay hover:-translate-y-1 hover:bg-clay/20 hover:shadow-clay active:translate-y-0 aria-pressed:bg-chalk aria-pressed:ring-[3px] sm:text-sm';
 
-function CourtSwatch({ court }: { court: CourtId }) {
+const CourtSwatch = memo(function CourtSwatch({ court }: { court: CourtId }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
     // The page scene behind, the court in front: a theme changes both.
@@ -26,7 +34,20 @@ function CourtSwatch({ court }: { court: CourtId }) {
       </svg>
     </span>
   );
-}
+});
+
+/** The four seats' pieces of one set, as a picker picture. */
+const SetSwatch = memo(function SetSwatch({ set }: { set: PieceSetId }) {
+  return (
+    <svg viewBox="-0.42 -0.42 1.84 1.84" aria-hidden="true" className="block w-full">
+      {SEATS.map((s) => (
+        <g key={s} transform={`translate(${s % 2} ${s > 1 ? 1 : 0})`}>
+          <Guti set={set} seat={s} />
+        </g>
+      ))}
+    </svg>
+  );
+});
 
 /**
  * Pick the court and the pieces. `onChange` null shows the look read-only (room guests: the
@@ -68,7 +89,10 @@ export function LookPicker({
             key={court}
             type="button"
             aria-pressed={value.court === court}
-            onClick={() => onChange({ ...value, court })}
+            onClick={() => {
+              play('click');
+              onChange({ ...value, court });
+            }}
             className={TILE}
           >
             <CourtSwatch court={court} />
@@ -87,16 +111,13 @@ export function LookPicker({
             key={set}
             type="button"
             aria-pressed={value.pieces === set}
-            onClick={() => onChange({ ...value, pieces: set })}
+            onClick={() => {
+              play('click');
+              onChange({ ...value, pieces: set });
+            }}
             className={TILE}
           >
-            <svg viewBox="-0.42 -0.42 1.84 1.84" aria-hidden="true" className="block w-full">
-              {SEATS.map((s) => (
-                <g key={s} transform={`translate(${s % 2} ${s > 1 ? 1 : 0})`}>
-                  <Guti set={set} seat={s} />
-                </g>
-              ))}
-            </svg>
+            <SetSwatch set={set} />
             {t(`pieces.${set}`)}
           </button>
         ))}

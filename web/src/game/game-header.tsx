@@ -9,9 +9,9 @@ import { LangSwitch } from '@/share';
 import { Guti } from '@/share/guti';
 import { Logo, WRAP } from '@/share/site-chrome';
 import { useLook } from './look.ts';
-import { MuteButton } from './mute-button.tsx';
+import { SettingsButton } from './settings-panel.tsx';
 
-/** The slim header on game pages: home link, the rules of the game being played (`help`), sound and language. */
+/** The slim header on game pages: home link, the rules of the game being played (`help`), settings and language. */
 export function GameHeader({ help }: { help?: BoardId }) {
   const t = useT('game');
   return (
@@ -37,7 +37,7 @@ export function GameHeader({ help }: { help?: BoardId }) {
             </a>
           </Button>
         )}
-        <MuteButton />
+        <SettingsButton />
         <LangSwitch />
       </div>
     </header>

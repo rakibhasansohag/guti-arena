@@ -96,4 +96,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://guti.rakibhasansohag.com/how-to-play/bagh-chal?lang=en" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://guti.rakibhasansohag.com/how-to-play/bagh-chal" />
   </url>
+  <url>
+    <loc>https://guti.rakibhasansohag.com/rooms</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://guti.rakibhasansohag.com/rooms" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://guti.rakibhasansohag.com/rooms?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://guti.rakibhasansohag.com/rooms" />
+  </url>
+  <url>
+    <loc>https://guti.rakibhasansohag.com/rooms?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="bn" href="https://guti.rakibhasansohag.com/rooms" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://guti.rakibhasansohag.com/rooms?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://guti.rakibhasansohag.com/rooms" />
+  </url>
 </urlset>

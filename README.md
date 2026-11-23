@@ -70,7 +70,7 @@ The game opens at http://localhost:5173. The online-room server runs alongside i
 
 Made by Rakib Hasan Sohag.
 
-Sounds from [Kenney](https://kenney.nl) and the ground texture from [Poly Haven](https://polyhaven.com), both CC0.
+Sound effects and the court ambience were made for this project with [ElevenLabs](https://elevenlabs.io) sound effects, on a paid plan that allows commercial use. No music. The ground texture is from [Poly Haven](https://polyhaven.com), CC0. Reaction emoji: [Noto Emoji](https://github.com/googlefonts/noto-emoji) by Google, SVGs from `2D/svg`, Apache License 2.0.
 
 ## License
 

@@ -7,6 +7,7 @@ import {
   useState,
   type KeyboardEvent,
   type MouseEvent,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
 import { AnimatePresence, MotionConfig, motion, type Transition } from 'motion/react';
@@ -38,6 +39,7 @@ import { positions, turnsFor, viewOf, type Pos } from './board-view.ts';
 import { COURT, shadeOf, useLook } from './look.ts';
 import { useSeatName } from './use-seat-name.ts';
 import { play } from './sound.ts';
+import { buzz, motionPolicy, useSettings } from './settings.ts';
 import { track, type Tracked } from './track.ts';
 import { useNum } from './use-num.ts';
 
@@ -83,6 +85,7 @@ export function GameBoard({
   const turns = turnsFor(board, bottomSeat);
   const look = useLook();
   const court = COURT[look.court];
+  const motion_ = motionPolicy(useSettings());
 
   // Piece identities across states, so pebbles slide rather than blink.
   // Updated while rendering when the pieces change (React's "adjust state on prop change" pattern).
@@ -104,22 +107,44 @@ export function GameBoard({
   const [keyboard, setKeyboard] = useState(false);
   const rovingPoint = focus ?? selected ?? board.centre;
 
-  // Sounds follow what the board shows.
+  // Sounds follow what the board shows. A jump from where the last jump landed is a chain.
   const prevTurn = useRef<Seat | null>(null);
+  const lastLanding = useRef<PointId | null>(null);
+  const fresh = isFresh(state);
   useEffect(() => {
-    if (tracked.captured.length > 0) play('capture');
-    else if (tracked.lastMove) play('move');
-  }, [tracked]);
+    const m = tracked.lastMove;
+    if (tracked.captured.length > 0 && m) {
+      play(lastLanding.current === m.from ? 'chain' : 'capture');
+      buzz(40);
+      lastLanding.current = m.to;
+      return;
+    }
+    lastLanding.current = null;
+    if (m) play('move');
+    else if (fresh) play('start');
+    // `fresh` only changes along with the pieces, so this still runs once per board state.
+  }, [tracked, fresh]);
   useEffect(() => {
     if (state.winner !== null) {
       const w = state.winner;
       const won = w !== 'draw' && seats[w]?.kind === 'human' && (mySeat === null || w === mySeat);
-      play(won ? 'win' : 'lose');
+      play(w === 'draw' ? 'draw' : won ? 'win' : 'lose');
     } else if (myTurn && prevTurn.current !== state.turn) {
       play('turn');
+      buzz([20, 60, 20]);
     }
     prevTurn.current = state.turn;
   }, [state.turn, state.winner, myTurn, mySeat, seats]);
+  // A wooden tick for each of your last five seconds on the clock.
+  useEffect(() => {
+    if (!myTurn || turnDeadline === null) return;
+    const ids: ReturnType<typeof setTimeout>[] = [];
+    for (let s = 5; s >= 1; s--) {
+      const wait = turnDeadline - s * 1000 - Date.now();
+      if (wait >= 0) ids.push(setTimeout(() => play('tick'), wait));
+    }
+    return () => ids.forEach(clearTimeout);
+  }, [myTurn, turnDeadline]);
 
   const placing = legal[0]?.from === HAND;
   const forced = mustCapture(state.board);
@@ -152,7 +177,10 @@ export function GameBoard({
             : selected
               ? null // tapping away from a selected piece just lets go of it
               : 'hint.pickFirst';
-    if (key) setHint({ state, key });
+    if (key) {
+      setHint({ state, key });
+      play('invalid');
+    }
   };
 
   function tap(id: PointId) {
@@ -164,6 +192,7 @@ export function GameBoard({
       setSel(null);
       setHint(null);
     } else if (!state.chainFrom && legal.some((m) => m.from === id)) {
+      if (id !== selected) play('select');
       setSel({ state, point: id });
       setHint(null);
     } else {
@@ -282,8 +311,15 @@ export function GameBoard({
         ].map((sides) =>
           sides.flatMap((side) => state.seats.filter((s) => (s + turns) % 4 === side)),
         );
+  // Portrait: a row of panels above the board and one below. Landscape (desktop, a turned
+  // phone): the board fills the height, with the top row's panels on its left, the rest on its right.
   const panels = (row: 0 | 1) => (
-    <div className="flex gap-2 px-2">
+    <div
+      className={cn(
+        'flex gap-2 px-2 sm:landscape:w-full sm:landscape:max-w-72 sm:landscape:flex-col-reverse sm:landscape:justify-center sm:landscape:px-0 3xl:landscape:max-w-80',
+        row === 0 ? 'sm:landscape:justify-self-end' : 'sm:landscape:justify-self-start',
+      )}
+    >
       {rows[row]!.map((s) => (
         <SeatPanel
           key={s}
@@ -303,14 +339,26 @@ export function GameBoard({
   );
 
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={motion_}>
       <div
-        className={cn('mx-auto flex w-full flex-col gap-2', className)}
-        // The board is as wide as the screen allows while the panels and status still fit its height.
-        style={{ maxWidth: `max(17rem, calc((100dvh - 17rem) * ${view.w / view.h}))` }}
+        className={cn(
+          'mx-auto grid w-full max-w-(--board-max) gap-2 sm:landscape:max-w-none sm:landscape:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:landscape:items-center sm:landscape:gap-x-4 sm:landscape:px-4',
+          className,
+        )}
+        style={
+          {
+            // Portrait: as wide as the screen allows while the panels and status fit its height.
+            '--board-max': `max(17rem, calc((100dvh - 18rem) * ${view.w / view.h}))`,
+            '--ar': view.w / view.h,
+          } as CSSProperties
+        }
       >
         {panels(0)}
-        <div className="relative w-full" style={{ aspectRatio: `${view.w} / ${view.h}` }}>
+        <div
+          // Landscape: as tall as the screen under the header and status, leaving the panels room.
+          className="relative w-full sm:landscape:h-[min(calc(100dvh-9rem),calc((100vw-30rem)/var(--ar)))] sm:landscape:w-auto"
+          style={{ aspectRatio: `${view.w} / ${view.h}` }}
+        >
           <svg
             ref={svgRef}
             viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
@@ -433,7 +481,7 @@ export function GameBoard({
         </div>
         {panels(1)}
 
-        <div className="flex min-h-12 flex-wrap items-center justify-center gap-3 px-4 3xl:min-h-14">
+        <div className="flex min-h-12 flex-wrap items-center justify-center gap-3 px-4 sm:landscape:col-span-3 3xl:min-h-14">
           <p aria-live="polite" className="font-display text-lg font-extrabold 3xl:text-xl">
             {hint?.state === state ? (
               <motion.span
@@ -460,6 +508,17 @@ export function GameBoard({
         </div>
       </div>
     </MotionConfig>
+  );
+}
+
+/** Whether no piece has moved yet: every start point is filled and nothing else is. */
+function isFresh(state: GameState): boolean {
+  const board = boardOf(state);
+  if (state.quietRounds !== 0 || state.chainFrom) return false;
+  const start = state.seats.flatMap((s) => board.start[s].map((p) => [p, s] as const));
+  return (
+    start.length === Object.keys(state.pieces).length &&
+    start.every(([p, s]) => state.pieces[p] === s)
   );
 }
 
@@ -548,7 +607,7 @@ function SeatPanel({
   return (
     <div
       className={cn(
-        'relative flex min-w-0 flex-1 items-center gap-2 rounded-clay bg-chalk/90 px-2.5 py-1.5 text-charcoal shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-4 sm:py-2',
+        'relative flex min-w-0 flex-1 items-center gap-2 rounded-clay sm:landscape:flex-none bg-chalk/90 px-2.5 py-1.5 text-charcoal shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-4 sm:py-2',
         active && '-translate-y-0.5 shadow-clay-lift ring-[3px]',
         out && 'opacity-50',
       )}

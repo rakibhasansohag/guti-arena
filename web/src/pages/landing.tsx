@@ -142,6 +142,12 @@ export default function Landing() {
               <Button asChild variant="secondary" className={CTA}>
                 <Link to="/r/new">{t('cta.friends')}</Link>
               </Button>
+              <Link
+                to="/rooms"
+                className="inline-flex h-12 items-center self-center px-2 font-display font-extrabold underline decoration-charcoal/30 underline-offset-4 transition-colors duration-200 hover:decoration-charcoal"
+              >
+                {t('nav.rooms')}
+              </Link>
             </div>
             <JoinForm />
           </div>

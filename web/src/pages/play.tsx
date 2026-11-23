@@ -28,6 +28,7 @@ import {
   Scene,
   SeatPip,
   SetupLayout,
+  play,
   saveLook,
   useSavedLook,
 } from '@/game';
@@ -191,7 +192,10 @@ function SetupCard({
                     key={k}
                     type="button"
                     aria-pressed={setup.kinds[seat] === k}
-                    onClick={() => onChange({ ...setup, kinds: { ...setup.kinds, [seat]: k } })}
+                    onClick={() => {
+                      play('click');
+                      onChange({ ...setup, kinds: { ...setup.kinds, [seat]: k } });
+                    }}
                     className={SEGMENT}
                   >
                     {t(k === 'human' ? 'kind.human' : `level.${k}`)}

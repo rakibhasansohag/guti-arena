@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import { WifiOff } from 'lucide-react';
 import { DEFAULT_LOOK, type Look } from '@guti-arena/engine';
@@ -6,12 +6,14 @@ import { GameHeader, Scene, saveLook, savedLook } from '@/game';
 import { useT } from '@/i18n';
 import { savedName, useRoom } from '@/net';
 import { CreateRoom } from '@/room/create-room';
-import { Lobby, NameCard } from '@/room/lobby';
+import { Lobby, LockCard, NameCard } from '@/room/lobby';
 import { Problem } from '@/room/problem';
 import { RoomGame } from '@/room/room-game';
 
 /** Room codes: 5 letters, no vowels. */
 const CODE = /^[BCDFGHJKLMNPQRSTVWXYZ]{5}$/;
+/** How long a look the host tapped waits for the server before the screen goes back. */
+const LOOK_WAIT_MS = 3000;
 
 export default function Page() {
   const t = useT('room');
@@ -19,7 +21,7 @@ export default function Page() {
   return (
     <>
       <title>{t('meta.title')}</title>
-      {/* Rooms are private; robots.txt disallows /r/ too. */}
+      {/* Rooms are not pages to find; robots.txt disallows /r/ too. */}
       <meta name="robots" content="noindex" />
       {CODE.test(code) ? (
         <Room key={code} code={code} />
@@ -41,14 +43,26 @@ const same = (a: Look, b: Look) => a.court === b.court && a.pieces === b.pieces;
 
 function Room({ code }: { code: string }) {
   const t = useT('room');
-  const { connection, room, you, fatal, notice, send, join } = useRoom(code);
+  const { connection, room, you, fatal, notice, lock, reactions, reactCooling, send, join, react } =
+    useRoom(code);
   // With a remembered name the hook joins on its own, so only ask when there is none.
   const askName = !savedName();
   const joined = !!you?.playerId;
   const isHost = !!room && joined && room.hostId === you.playerId;
   // Rooms from an older server have no look: the default one.
-  const look = room?.look ?? DEFAULT_LOOK;
+  const serverLook = room?.look ?? DEFAULT_LOOK;
+
+  // The host's tap shows at once; the server's echo (or LOOK_WAIT_MS) settles it.
+  const [pending, setPending] = useState<Look | null>(null);
+  if (pending && same(pending, serverLook)) setPending(null);
+  useEffect(() => {
+    if (!pending) return;
+    const id = setTimeout(() => setPending(null), LOOK_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [pending]);
+  const look = pending ?? serverLook;
   const setLook = (l: Look) => {
+    setPending(l);
     saveLook(l); // the host's choice is also remembered on this device
     send({ t: 'set-look', look: l });
   };
@@ -71,6 +85,53 @@ function Room({ code }: { code: string }) {
         </Main>
       </Scene>
     );
+
+  const connecting = (
+    <p role="status" className="font-display text-lg font-extrabold">
+      {t('conn.connecting')}
+    </p>
+  );
+  let body: ReactNode;
+  if (!room || !you) body = connecting;
+  else if (joined)
+    body =
+      room.phase === 'lobby' || !room.game ? (
+        <Lobby
+          room={room}
+          you={you}
+          send={send}
+          join={join}
+          look={look}
+          onLook={isHost ? setLook : null}
+        />
+      ) : (
+        <RoomGame
+          room={room}
+          game={room.game}
+          you={you}
+          send={send}
+          reactions={reactions}
+          react={you.seat === null ? null : { onReact: react, cooling: reactCooling }}
+        />
+      );
+  // A locked room shows nothing until the password is right. A remembered name has already
+  // tried to join, so wait for the server's answer before asking.
+  else if (room.access === 'locked')
+    body = askName || lock ? <LockCard code={code} lock={lock} onJoin={join} /> : connecting;
+  // A game in play can be watched straight away, without a name.
+  else if (room.game && room.phase !== 'lobby')
+    body = (
+      <RoomGame
+        room={room}
+        game={room.game}
+        you={you}
+        send={send}
+        reactions={reactions}
+        react={null}
+      />
+    );
+  else body = askName ? <NameCard code={code} onJoin={join} /> : connecting;
+
   return (
     <Scene look={look}>
       <GameHeader help={room?.game ? (room.game.board ?? 'four') : undefined} />
@@ -84,17 +145,7 @@ function Room({ code }: { code: string }) {
             {t('conn.reconnecting')}
           </p>
         )}
-        {!room || !you || (!joined && !askName) ? (
-          <p role="status" className="font-display text-lg font-extrabold">
-            {t('conn.connecting')}
-          </p>
-        ) : !joined ? (
-          <NameCard code={code} onJoin={join} />
-        ) : room.phase === 'lobby' || !room.game ? (
-          <Lobby room={room} you={you} send={send} join={join} onLook={isHost ? setLook : null} />
-        ) : (
-          <RoomGame room={room} game={room.game} you={you} send={send} />
-        )}
+        {body}
         {notice && (
           <p
             role="status"

@@ -17,3 +17,7 @@
   Cache-Control: public, max-age=604800
 /og/*
   Cache-Control: public, max-age=604800
+/sounds/*
+  Cache-Control: public, max-age=604800
+/reactions/*
+  Cache-Control: public, max-age=604800

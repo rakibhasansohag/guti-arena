@@ -18,14 +18,17 @@ export function GameHeader({ help }: { help?: BoardId }) {
     <header className={cn(WRAP, 'flex items-center justify-between gap-3 py-3')}>
       <Link
         to="/"
-        className="flex items-center gap-2 rounded-full font-display text-xl font-extrabold transition-opacity duration-200 hover:opacity-80"
+        className="relative flex items-center gap-2 rounded-full font-display text-xl font-extrabold transition-opacity duration-200 after:absolute after:-inset-1.5 hover:opacity-80"
       >
         <Logo />
-        <span lang="en">Guti Arena</span>
+        {/* With the help icon there is no room for the name on a phone: the pebble still links home. */}
+        <span lang="en" className={cn('whitespace-nowrap', help && 'max-sm:sr-only')}>
+          Guti Arena
+        </span>
       </Link>
       <div className="flex items-center gap-2">
         {help && (
-          <Button asChild variant="ghost" size="icon-lg" className="rounded-full">
+          <Button asChild variant="ghost" size="icon-lg" className={cn('rounded-full', HIT)}>
             <a
               href={guidePath(help)}
               target="_blank"
@@ -43,6 +46,9 @@ export function GameHeader({ help }: { help?: BoardId }) {
     </header>
   );
 }
+
+/** Grows a 36 px icon button's touch area to 44 px without changing the layout. */
+export const HIT = 'relative after:absolute after:-inset-1';
 
 /** One piece of the current look with the seat's colour and mark, for lists and badges. */
 export function SeatPip({

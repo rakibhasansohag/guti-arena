@@ -17,31 +17,33 @@ No betting, wagering or money features anywhere, including copy and art.
 - `web/`: Vite, React, TypeScript, Tailwind CSS v4, shadcn/ui (`src/components/ui/`), Motion, React Router v8 (declarative mode, routes in `src/app.tsx`).
   - `src/styles/tokens.css`: design tokens. `src/styles/index.css`: Tailwind entry and shadcn mapping.
   - `src/i18n/`: `useT(namespace)` over plain dictionaries, `<namespace>.<bn|en>.ts`. Language is a `?lang=bn|en` link (remembered), else the `lang` value in `localStorage`, default `bn`.
-  - `src/pages/`: one lazy-loaded page per route: `/`, `/how-to-play` (rules hub), `/how-to-play/:game` (one guide per game, `guide.tsx`), `/play` (`?game=<slug>` preselects a game), `/r/:code`.
+  - `src/pages/`: one lazy-loaded page per route: `/`, `/how-to-play` (rules hub), `/how-to-play/:game` (one guide per game, `guide.tsx`), `/play` (`?game=<slug>` preselects a game), `/rooms` (live rooms: public and password rooms from `GET /api/rooms`, polled every 3 s while the tab is visible; not prerendered), `/r/:code`.
   - `src/guide/`: the guides' pictures (`steps.ts`, drawn by `Diagram` in `src/game/diagram.tsx`) and words (`content.bn.ts`, `content.en.ts`); slugs are in `src/share/guides.ts`; `lesson.tsx` is each guide's one-move puzzle on the real `GameBoard`, loaded after the page. A new game needs an entry in each, in `GUIDES` in `scripts/prerender.mjs` and in `public/sitemap.xml`. Each page renders its own `<title>` (React 19 hoists it); `index.html` only has a fallback.
   - `src/share/`: `BoardArt` (static board drawing from the engine's points and lines), `ShareCard` and `shareInvite` (result card and room invites), `Seo` (per-page head tags), `SiteHeader`, `SiteFooter`, `LangSwitch`.
-  - `src/game/`: `<GameBoard />` (renders any `GameState`, animates the change, emits moves; used by `/play` and rooms), `sound.ts` (Kenney clips, mute in `localStorage`), `ask-ai.ts` + `ai-worker.ts` (engine AI in a Web Worker), `GameHeader`, `SeatPip`, `MuteButton`, the setup screen (`setup.tsx` `SetupLayout`, `board-picker.tsx`, `board-base.tsx` `BoardBase` and `BoardPreview`, `board-view.ts`), and the cosmetic looks: `court.tsx` (court surfaces), `look.ts` (`LookContext`, `COURT`, the device's saved look), `scene.tsx` (page scene), `look-picker.tsx` (`LookPicker`); the piece sets are `Guti` in `src/share/guti.tsx`. See `docs/DESIGN.md`.
-  - `src/net/`: `useRoom(code)` (one WebSocket, backoff reconnect, auto-rejoin with the remembered name), `playerId` and name in `localStorage`, Turnstile loader (production site key on the live host, Cloudflare's test key elsewhere).
-  - `src/room/`: `/r/new` creation, name prompt, lobby, live game and end screen, and the not-found / full / daily-limit screens.
+  - `src/game/`: `<GameBoard />` (renders any `GameState`, animates the change, emits moves; used by `/play` and rooms), `sound.ts` (Web Audio: ElevenLabs clips in `public/sounds/`, per-court ambience loops in `public/sounds/ambience/`, nothing loads before the first tap; gain channels master, effects, ambience, reactions), `settings.ts` (`useSettings()`, `useReactionBubbles()`: one `settings` object in `localStorage`) and `settings-panel.tsx` (the gear in `GameHeader`: tap opens Settings, hold mutes), `ask-ai.ts` + `ai-worker.ts` (engine AI in a Web Worker), `GameHeader`, `SeatPip`, the setup screen (`setup.tsx` `SetupLayout`, `board-picker.tsx`, `board-base.tsx` `BoardBase` and `BoardPreview`, `board-view.ts`), and the cosmetic looks: `court.tsx` (court surfaces), `look.ts` (`LookContext`, `COURT`, the device's saved look), `scene.tsx` (page scene), `look-picker.tsx` (`LookPicker`); the piece sets are `Guti` in `src/share/guti.tsx`. See `docs/DESIGN.md`.
+  - `src/net/`: `useRoom(code)` (one WebSocket, backoff reconnect, auto-rejoin with the remembered name; a locked room's password is kept in memory only, never in the URL or storage; the latest reaction per seat for 3 s and a 1.2 s client cooldown), `playerId` and name in `localStorage`, Turnstile loader (production site key on the live host, Cloudflare's test key elsewhere).
+  - `src/room/`: `/r/new` creation, name prompt, lobby, live game and end screen, and the not-found / full / daily-limit screens. The host picks access in the lobby (Private: link only, the default; Public: listed on `/rooms`; Password: listed with a lock; `set-access`). A locked room asks newcomers for the password (`LockCard`). Anyone without a seat watches (a started public room is watchable without a name, with a Watching bar). `reactions.tsx`: preset reactions (`REACTIONS`), a tray for seated players, bubbles on seat panels for 3 s, Noto Emoji art in `public/reactions/<id>.svg`.
   - Prerender: `pnpm --filter web build` also renders `/`, `/how-to-play` and every game guide to static Bangla HTML (`src/entry-server.tsx`, `scripts/prerender.mjs`); `main.tsx` hydrates it. Anything those pages render must give the same markup on server and client: no `window`, `localStorage` or random values during render. The prerender inlines the CSS and starts the app script after the `load` event on those two pages (at once for any other route or for English), so their buttons become interactive a moment after the page shows. It also appends the Content-Security-Policy to `dist/_headers`, with hashes of those inline scripts (they change every build); security and cache headers live in `public/_headers`.
   - `pnpm --filter web make-images` regenerates `public/og/guti-arena.png`, `public/icons/*` and the board pictures `public/board/*.webp` with headless Edge or Chrome and ffmpeg. Re-run it after changing `BoardArt` or the start position.
-- `worker/`: Cloudflare Worker. `wrangler.jsonc` serves `../web/dist` with single-page-app fallback; only `/api/*` runs the Worker. Durable Object binding `ROOM`, class `Room`, SQLite storage (declared with `exports`). Run `pnpm --filter worker cf-typegen` after editing `wrangler.jsonc`. Room rules are plain functions in `src/room-logic.ts` (tested in `test/`); `src/index.ts` is the Durable Object and the `/api` routes. Deployed to the custom domain `guti.rakibhasansohag.com` (`workers_dev` off). Secret `TURNSTILE_SECRET` is set in Cloudflare; `.dev.vars` holds Cloudflare's public always-pass test secret for local dev.
+- `worker/`: Cloudflare Worker. `wrangler.jsonc` serves `../web/dist` with single-page-app fallback; only `/api/*` runs the Worker. Durable Object bindings `ROOM` (class `Room`, one per room) and `ROOM_LIST` (class `RoomList` in `src/room-list.ts`, one instance named `all` holding the public list), both SQLite storage (declared with `exports`). `GET /api/rooms` reads the list through `caches.default` for 2 s. A locked room stores only a salted SHA-256 of its password and sends sockets that have not joined a redacted state (no game, names or host); wrong passwords close the socket after 5 and are capped at 20 a minute per room. Only the host's own sockets get the real `hostId` (it is a player's rejoin credential; others get `'-'`). Up to 16 sockets per room. Run `pnpm --filter worker cf-typegen` after editing `wrangler.jsonc`. Room rules are plain functions in `src/room-logic.ts` (tested in `test/`); `src/index.ts` is the Durable Object and the `/api` routes. Deployed to the custom domain `guti.rakibhasansohag.com` (`workers_dev` off). Secret `TURNSTILE_SECRET` is set in Cloudflare; `.dev.vars` holds Cloudflare's public always-pass test secret for local dev.
 - `docs/DESIGN.md`: the design system.
 - `.github/workflows/deploy.yml`: every push to `main` runs lint, typecheck and tests, builds the web app and deploys the Worker. It needs the repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. A failed check stops the deploy. To deploy by hand: `pnpm --filter web build` then `pnpm --filter worker run deploy`.
 
 ## Scripts (from the repo root)
 
-| Command          | Does                                                                |
-| ---------------- | ------------------------------------------------------------------- |
-| `pnpm install`   | Install everything (pnpm workspaces)                                |
-| `pnpm dev`       | Web on 5173 (proxies `/api` to 8787) and worker on 8787             |
-| `pnpm build`     | Build `web/dist`, then dry-run the worker bundle into `worker/dist` |
-| `pnpm lint`      | oxlint, then ls-lint                                                |
-| `pnpm typecheck` | `tsc` in every package                                              |
-| `pnpm format`    | Prettier, whole repo                                                |
-| `pnpm test`      | Vitest in `engine` and `worker`                                     |
+| Command          | Does                                                                        |
+| ---------------- | --------------------------------------------------------------------------- |
+| `pnpm install`   | Install everything (pnpm workspaces)                                        |
+| `pnpm dev`       | Web on 5173 (proxies `/api` to `API_PORT`, default 8787) and worker on 8787 |
+| `pnpm build`     | Build `web/dist`, then dry-run the worker bundle into `worker/dist`         |
+| `pnpm lint`      | oxlint, then ls-lint                                                        |
+| `pnpm typecheck` | `tsc` in every package                                                      |
+| `pnpm format`    | Prettier, whole repo                                                        |
+| `pnpm test`      | Vitest in `engine` and `worker`                                             |
 
 Run one package with `pnpm --filter <name> <script>`, e.g. `pnpm --filter @guti-arena/engine test`.
+
+Two `wrangler dev` runs in `worker/` share `.wrangler/state` and lock each other: give each its own `--persist-to <folder>`, and point Vite at it with `API_PORT` (PowerShell: `$env:API_PORT='8790'`).
 
 ## The game
 
@@ -55,6 +57,9 @@ Run one package with `pnpm --filter <name> <script>`, e.g. `pnpm --filter @guti-
 - **End:** a seat with no pieces is out. Last seat with pieces wins. If 40 full rounds pass with no capture, the seat with the most pieces wins; a tie is a draw.
 - **Looks:** court (surface and page scene) and piece set are cosmetic (`Look` in `protocol.ts`), picked before the game: each device picks its own on `/play`; in a room the host picks for everyone (`set-look`, lobby only).
 - **Timer online:** 30 seconds per turn. On timeout the server plays a medium-AI move for that seat.
+- **Host online:** the first player to join owns the room. If the host is gone for 20 seconds, the first connected player in join order becomes host; the owner gets it back on return.
+- **Reactions:** 16 preset emoji and phrases, no free text. Seated players only, about one a second (the server drops closer ones).
+- **Sound:** no music anywhere, including ambience (natural sounds only).
 
 ## Conventions
 

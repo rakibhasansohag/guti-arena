@@ -320,7 +320,7 @@ export function GameBoard({
         row === 0 ? 'sm:landscape:justify-self-end' : 'sm:landscape:justify-self-start',
       )}
     >
-      {rows[row]!.map((s) => (
+      {rows[row]!.map((s, i, all) => (
         <SeatPanel
           key={s}
           seat={s}
@@ -333,6 +333,7 @@ export function GameBoard({
           deadline={state.turn === s ? turnDeadline : null}
           bubble={bubbles?.[s]}
           bubbleBelow={row === 0}
+          bubbleUpBeside={i === all.length - 1}
         />
       ))}
     </div>
@@ -589,10 +590,13 @@ function SeatPanel({
   board,
   bubble,
   bubbleBelow,
+  bubbleUpBeside,
 }: {
   bubble: ReactNode;
   /** The top row's bubble opens downward, the bottom row's upward. */
   bubbleBelow: boolean;
+  /** Beside the board the panels stack (reversed): the top one opens upward, the rest downward, never over a neighbour. */
+  bubbleUpBeside: boolean;
   board: BoardId | undefined;
   seat: Seat;
   info: SeatInfo | undefined;
@@ -644,8 +648,11 @@ function SeatPanel({
           <motion.div
             key="bubble"
             className={cn(
-              'pointer-events-none absolute left-1/2 z-10 -translate-x-1/2',
+              'pointer-events-none absolute left-1/2 z-10 w-max -translate-x-1/2',
               bubbleBelow ? 'top-full mt-1.5 origin-top' : 'bottom-full mb-1.5 origin-bottom',
+              bubbleUpBeside
+                ? 'sm:landscape:top-auto sm:landscape:bottom-full sm:landscape:mt-0 sm:landscape:mb-1.5 sm:landscape:origin-bottom'
+                : 'sm:landscape:top-full sm:landscape:bottom-auto sm:landscape:mt-1.5 sm:landscape:mb-0 sm:landscape:origin-top',
             )}
             initial={{ opacity: 0, scale: 0.6, y: bubbleBelow ? -6 : 6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

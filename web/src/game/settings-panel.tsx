@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Pebble } from '@/share/board-art';
-import { SEGMENT } from './game-header.tsx';
+import { HIT, SEGMENT } from './game-header.tsx';
 import { setSettings, useSettings, type Settings } from './settings.ts';
 import { play, type Sound } from './sound.ts';
 import { useNum } from './use-num.ts';
@@ -50,7 +50,7 @@ export function SettingsButton() {
         <Button
           variant="ghost"
           size="icon-lg"
-          className="relative rounded-full"
+          className={cn('rounded-full', HIT)}
           aria-label={t('settings.open')}
           title={t('settings.open')}
           onPointerDown={press}

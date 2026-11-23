@@ -72,6 +72,8 @@ Durations are also CSS variables in `tokens.css` (`--duration-piece-move` and ot
 - `BoardPreview` is memoised and draws each seat's piece once in `<defs>`, placing it with `<use>`: a new piece set redraws four pieces per board, not all of them.
 - Board-picker thumbnails are `plain`: no wobble filter (invisible at that size) and no crossfade. Only the big preview and the playable board use the filter.
 - The sticky preview card is solid `bg-card`: no backdrop blur over the scene.
+- Board-picker thumbnails take up a new look just after the tap, one card every 40 ms (`Thumb` in `board-picker.tsx`). They hold most of the page's SVG, so the tap's own frame only redraws the big preview.
+- `Scene` sets the dark-court text colour as an inline `color`, never a class: toggling any class on an ancestor of the boards restyles every board node (about 20 ms on desktop), while an inline colour change costs under 1 ms.
 
 ### Turn guidance on the board
 

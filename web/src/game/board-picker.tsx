@@ -1,10 +1,25 @@
-import { BOARD_IDS, type BoardId } from '@guti-arena/engine';
+import { useEffect, useState } from 'react';
+import { BOARD_IDS, type BoardId, type Look } from '@guti-arena/engine';
 import { useT } from '@/i18n';
 import { guidePath } from '@/share/guides';
 import { BoardPreview } from './board-base.tsx';
 import { TILE } from './look-picker.tsx';
 import { useLook } from './look.ts';
 import { play } from './sound.ts';
+
+/**
+ * A board card's picture. It takes up a new look `delay` ms after it changes, one card after
+ * another: the thumbnails hold most of the page's SVG, so redrawing them in the tap's own frame
+ * made court and piece taps slow on phones. Fast repeated taps redraw them once, at the end.
+ */
+function Thumb({ board, look, delay }: { board: BoardId; look: Look; delay: number }) {
+  const [shown, setShown] = useState(look);
+  useEffect(() => {
+    const id = setTimeout(() => setShown(look), delay);
+    return () => clearTimeout(id);
+  }, [look, delay]);
+  return <BoardPreview board={board} look={shown} plain className="aspect-square w-full" />;
+}
 
 /** Pick the game: one card per board. `onChange` null shows the choice read-only (room guests). */
 export function BoardPicker({
@@ -27,7 +42,7 @@ export function BoardPicker({
           aria-label={t('setup.board')}
           className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"
         >
-          {BOARD_IDS.map((id) => (
+          {BOARD_IDS.map((id, i) => (
             <button
               key={id}
               type="button"
@@ -38,7 +53,7 @@ export function BoardPicker({
               }}
               className={TILE}
             >
-              <BoardPreview board={id} look={look} plain className="aspect-square w-full" />
+              <Thumb board={id} look={look} delay={80 + i * 40} />
               <span className="text-sm sm:text-base">{t(`boards.${id}`)}</span>
               <span className="font-sans text-xs font-normal">{t(`boards.${id}.tag`)}</span>
             </button>

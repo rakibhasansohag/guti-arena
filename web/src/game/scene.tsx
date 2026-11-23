@@ -1,7 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import type { Look } from '@guti-arena/engine';
-import { cn } from '@/lib/utils';
 import { COURT, LookContext } from './look.ts';
 import { motionPolicy, useSettings } from './settings.ts';
 import { setAmbienceCourt } from './sound.ts';
@@ -20,11 +19,10 @@ export function Scene({ look, children }: { look: Look; children: ReactNode }) {
   return (
     <LookContext value={look}>
       <MotionConfig reducedMotion={motionPolicy(settings)}>
+        {/* Colour inline, not a class: toggling a class here restyles every board node on the page (~20 ms). */}
         <div
-          className={cn(
-            'scene relative isolate flex min-h-dvh flex-col',
-            court.sceneDark && 'text-chalk',
-          )}
+          className="scene relative isolate flex min-h-dvh flex-col"
+          style={{ color: court.sceneDark ? 'var(--color-chalk)' : undefined }}
         >
           <AnimatePresence initial={false}>
             <motion.div

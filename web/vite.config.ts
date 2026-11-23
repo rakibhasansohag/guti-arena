@@ -9,7 +9,7 @@ export default defineConfig({
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
   server: {
-    // The worker (wrangler dev) serves /api on 8787, WebSockets included.
-    proxy: { '/api': { target: 'http://localhost:8787', ws: true } },
+    // The worker (wrangler dev) serves /api on 8787 (or API_PORT), WebSockets included.
+    proxy: { '/api': { target: `http://localhost:${process.env.API_PORT ?? 8787}`, ws: true } },
   },
 });

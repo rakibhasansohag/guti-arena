@@ -1,15 +1,18 @@
-import { legalMoves, type ClientMessage } from '@guti-arena/engine';
+import { DEFAULT_LOOK, legalMoves, type ClientMessage } from '@guti-arena/engine';
 import { describe, expect, it } from 'vitest';
 import {
   AI_DELAY_MS,
   COVER_AFTER_MS,
+  HOST_GRACE_MS,
   TURN_MS,
   botDueAt,
   cleanName,
   disconnect,
   handle,
+  hostDueAt,
   newRoom,
   parseMessage,
+  passHost,
   randomCode,
   CODE_RE,
   tick,
@@ -79,14 +82,82 @@ describe('lobby', () => {
     expect(r.turnDeadline).toBe(T0 + TURN_MS);
   });
 
-  it('passes the host on and restores the seat on rejoin', () => {
+  it('restores the seat on rejoin', () => {
     const r = lobby();
     disconnect(r, 'a', T0);
-    expect(r.hostId).toBe('b');
     expect(view(r).seats[0]).toMatchObject({ kind: 'human', connected: false });
     expect(handle(r, 'a', { t: 'join', playerId: 'a', name: 'Ana' }, T0)).toBeNull();
     expect(view(r).seats[0]).toMatchObject({ kind: 'human', connected: true });
+  });
+});
+
+describe('host', () => {
+  const rejoin = (r: ReturnType<typeof lobby>, id: string, now: number) =>
+    handle(r, id, { t: 'join', playerId: id, name: id }, now);
+
+  it('keeps the host when the host drops and rejoins within the grace period', () => {
+    const r = lobby();
+    disconnect(r, 'a', T0);
+    expect(hostDueAt(r)).toBe(T0 + HOST_GRACE_MS);
+    expect(r.hostId).toBe('a');
+    // b acts just before the grace ends: nothing changes.
+    expect(handle(r, 'b', { t: 'sit', seat: 2 }, T0 + HOST_GRACE_MS - 1)).toBeNull();
+    expect(r.hostId).toBe('a');
+    expect(rejoin(r, 'a', T0 + HOST_GRACE_MS - 1)).toBeNull();
+    expect(r.hostId).toBe('a');
+    expect(hostDueAt(r)).toBeNull();
+  });
+
+  it('passes the host after the grace period, on the next message or alarm', () => {
+    const r = lobby();
+    disconnect(r, 'a', T0);
+    expect(passHost(r, T0 + HOST_GRACE_MS - 1)).toBe(false);
+    handle(r, 'b', { t: 'sit', seat: 2 }, T0 + HOST_GRACE_MS + 5000);
     expect(r.hostId).toBe('b');
+    expect(handle(r, 'b', { t: 'set-look', look: DEFAULT_LOOK }, T0 + 25_000)).toBeNull(); // host-only
+
+    const r2 = lobby();
+    disconnect(r2, 'a', T0);
+    expect(passHost(r2, hostDueAt(r2)!)).toBe(true);
+    expect(r2.hostId).toBe('b');
+    expect(hostDueAt(r2)).toBeNull();
+  });
+
+  it('gives the host back to the owner who returns', () => {
+    const r = lobby();
+    disconnect(r, 'a', T0);
+    handle(r, 'b', { t: 'sit', seat: 2 }, T0 + 25_000);
+    expect(r.hostId).toBe('b');
+    expect(rejoin(r, 'a', T0 + 40_000)).toBeNull();
+    expect(r.hostId).toBe('a');
+    // A returning non-owner does not take it.
+    disconnect(r, 'b', T0 + 41_000);
+    rejoin(r, 'b', T0 + 42_000);
+    expect(r.hostId).toBe('a');
+  });
+
+  it('changes nothing when a guest disconnects, and never passes to nobody', () => {
+    const r = lobby();
+    disconnect(r, 'b', T0);
+    expect(hostDueAt(r)).toBeNull();
+    expect(handle(r, 'a', { t: 'sit', seat: 0 }, T0 + 60_000)).toBeNull();
+    expect(r.hostId).toBe('a');
+    disconnect(r, 'a', T0 + 61_000);
+    expect(hostDueAt(r)).toBeNull(); // nobody is connected to take it
+    expect(passHost(r, T0 + 120_000)).toBe(false);
+    expect(r.hostId).toBe('a');
+  });
+
+  it('works for a room saved before owners existed', () => {
+    const r = lobby();
+    delete r.ownerId;
+    disconnect(r, 'a', T0);
+    handle(r, 'b', { t: 'sit', seat: 2 }, T0 + 25_000);
+    expect(r.hostId).toBe('b');
+    expect(r.ownerId).toBe('a'); // the host when first read, before the pass
+    expect(rejoin(r, 'a', T0 + 30_000)).toBeNull();
+    expect(r.hostId).toBe('a');
+    expect(view(r)).toMatchObject({ access: 'private', watchers: 0 });
   });
 });
 

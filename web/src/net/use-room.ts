@@ -56,6 +56,8 @@ export function useRoom(code: string): RoomConnection {
         if (m.t === 'state') {
           setRoom(m.room);
           setYou(m.you);
+        } else if (m.t === 'reaction') {
+          // chat B shows reactions
         } else if (m.code === 'room-not-found' || m.code === 'room-full') {
           stopped = true;
           setFatal(m.code);

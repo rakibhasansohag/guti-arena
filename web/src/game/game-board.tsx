@@ -7,6 +7,7 @@ import {
   useState,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
 } from 'react';
 import { AnimatePresence, MotionConfig, motion, type Transition } from 'motion/react';
 import { Bot } from 'lucide-react';
@@ -55,6 +56,8 @@ export interface GameBoardProps {
   turnDeadline: number | null;
   /** Seat drawn at the bottom; defaults to `mySeat`. Null keeps north at the top. */
   bottomSeat?: Seat | null;
+  /** A speech bubble over a seat's panel (reactions); it opens away from the board's edge it sits on. */
+  bubbles?: Partial<Record<Seat, ReactNode>>;
   className?: string;
 }
 
@@ -67,6 +70,7 @@ export function GameBoard({
   seats,
   turnDeadline,
   bottomSeat = mySeat,
+  bubbles,
   className,
 }: GameBoardProps) {
   const t = useT('game');
@@ -291,6 +295,8 @@ export function GameBoard({
           out={!bagh && counts[s] === 0}
           active={state.winner === null && state.turn === s}
           deadline={state.turn === s ? turnDeadline : null}
+          bubble={bubbles?.[s]}
+          bubbleBelow={row === 0}
         />
       ))}
     </div>
@@ -522,7 +528,12 @@ function SeatPanel({
   active,
   deadline,
   board,
+  bubble,
+  bubbleBelow,
 }: {
+  bubble: ReactNode;
+  /** The top row's bubble opens downward, the bottom row's upward. */
+  bubbleBelow: boolean;
   board: BoardId | undefined;
   seat: Seat;
   info: SeatInfo | undefined;
@@ -537,7 +548,7 @@ function SeatPanel({
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-1 items-center gap-2 rounded-clay bg-chalk/90 px-2.5 py-1.5 text-charcoal shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-4 sm:py-2',
+        'relative flex min-w-0 flex-1 items-center gap-2 rounded-clay bg-chalk/90 px-2.5 py-1.5 text-charcoal shadow-clay ring-clay transition-[translate,box-shadow,opacity] duration-[350ms] ease-clay sm:gap-3 sm:px-4 sm:py-2',
         active && '-translate-y-0.5 shadow-clay-lift ring-[3px]',
         out && 'opacity-50',
       )}
@@ -569,6 +580,22 @@ function SeatPanel({
         </span>
         <span className="block truncate text-xs sm:text-sm">{note}</span>
       </span>
+      <AnimatePresence>
+        {bubble && (
+          <motion.div
+            key="bubble"
+            className={cn(
+              'pointer-events-none absolute left-1/2 z-10 -translate-x-1/2',
+              bubbleBelow ? 'top-full mt-1.5 origin-top' : 'bottom-full mb-1.5 origin-bottom',
+            )}
+            initial={{ opacity: 0, scale: 0.6, y: bubbleBelow ? -6 : 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+          >
+            {bubble}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

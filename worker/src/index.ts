@@ -5,8 +5,10 @@ import {
   botDueAt,
   disconnect,
   handle,
+  hostDueAt,
   newRoom,
   parseMessage,
+  passHost,
   randomCode,
   tick,
   view,
@@ -133,7 +135,9 @@ export class Room extends DurableObject<Env> {
       }
       s.emptySince = null;
     }
-    if (tick(s.room, now)) await this.changed();
+    const moved = tick(s.room, now);
+    const passed = passHost(s.room, now);
+    if (moved || passed) await this.changed();
     else await this.commit();
   }
 
@@ -151,7 +155,11 @@ export class Room extends DurableObject<Env> {
   private async commit() {
     const s = this.saved!;
     await this.ctx.storage.put('saved', s);
-    const times = [botDueAt(s.room), s.emptySince === null ? null : s.emptySince + CLEANUP_MS];
+    const times = [
+      botDueAt(s.room),
+      hostDueAt(s.room),
+      s.emptySince === null ? null : s.emptySince + CLEANUP_MS,
+    ];
     const next = Math.min(...times.filter((t) => t !== null));
     if (Number.isFinite(next)) await this.ctx.storage.setAlarm(next);
     else await this.ctx.storage.deleteAlarm();

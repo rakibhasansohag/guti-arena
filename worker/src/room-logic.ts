@@ -7,6 +7,7 @@ import {
   endChain,
   parseLook,
   DEFAULT_LOOK,
+  type Access,
   type AiLevel,
   type BoardId,
   type ClientMessage,
@@ -20,6 +21,8 @@ import {
 export const TURN_MS = 30_000;
 export const AI_DELAY_MS = 700;
 export const COVER_AFTER_MS = 20_000;
+/** How long the host can be gone (phone share sheet, reload) before another player is made host. */
+export const HOST_GRACE_MS = 20_000;
 export const NAME_MAX = 20;
 export const CODE_LETTERS = 'BCDFGHJKLMNPQRSTVWXYZ';
 export const CODE_RE = /^[BCDFGHJKLMNPQRSTVWXYZ]{5}$/;
@@ -41,8 +44,11 @@ export interface Room {
   code: string;
   phase: RoomState['phase'];
   hostId: string;
+  /** The first player who joined; gets the host back on return. Missing in older rooms: the host then. */
+  ownerId?: string;
   players: Player[]; // join order, used to pass the host on
   ai: (AiLevel | null)[]; // per seat
+  access?: Access; // missing in rooms saved before access existed: 'private'
   board?: BoardId; // missing in rooms saved before boards existed: 'four'
   look?: Look; // missing in rooms saved before looks existed: DEFAULT_LOOK
   game: GameState | null;
@@ -54,6 +60,7 @@ export function newRoom(code: string): Room {
     code,
     phase: 'lobby',
     hostId: '',
+    ownerId: '',
     players: [],
     ai: [null, null, null, null],
     board: 'four',
@@ -73,7 +80,19 @@ export function view(r: Room): RoomState {
   });
   const { code, phase, hostId, game, turnDeadline } = r;
   const board = r.board ?? 'four';
-  return { code, phase, hostId, board, look: r.look ?? DEFAULT_LOOK, seats, game, turnDeadline };
+  const watchers = r.players.filter((x) => x.connected && x.seat === null).length;
+  return {
+    code,
+    phase,
+    hostId,
+    board,
+    look: r.look ?? DEFAULT_LOOK,
+    seats,
+    game,
+    turnDeadline,
+    access: r.access ?? 'private',
+    watchers,
+  };
 }
 
 const graphemes = new Intl.Segmenter();
@@ -145,6 +164,9 @@ export function handle(
   m: ClientMessage,
   now: number,
 ): string | null {
+  r.ownerId ||= r.hostId; // rooms saved before owners existed (or still empty)
+  passHost(r, now);
+
   if (m.t === 'join') {
     let p = r.players.find((x) => x.id === m.playerId);
     if (!p) {
@@ -154,7 +176,9 @@ export function handle(
     p.name = cleanName(m.name);
     p.connected = true;
     p.goneAt = null;
-    if (!r.players.find((x) => x.id === r.hostId)?.connected) r.hostId = p.id;
+    if (r.hostId === '') r.ownerId = r.hostId = p.id; // first joiner owns the room
+    else if (p.id === r.ownerId) r.hostId = p.id; // the owner is back
+    else passHost(r, now); // the host's grace may have run out while nobody else was here
     return null;
   }
 
@@ -223,6 +247,9 @@ export function handle(
       r.game = null;
       r.turnDeadline = null;
       return null;
+    case 'set-access':
+    case 'react':
+      return 'bad-message'; // placeholder until chat A builds them
   }
 }
 
@@ -236,16 +263,29 @@ function setGame(r: Room, g: GameState, now: number) {
   }
 }
 
-/** Mark a player's last socket closed and pass the host on if needed. */
+/** Mark a player's last socket closed. The host is passed on later, by `passHost`. */
 export function disconnect(r: Room, playerId: string, now: number) {
   const p = r.players.find((x) => x.id === playerId);
   if (!p) return;
   p.connected = false;
   p.goneAt = now;
-  if (r.hostId === p.id) {
-    const next = r.players.find((x) => x.connected);
-    if (next) r.hostId = next.id;
-  }
+}
+
+/** When the host passes to someone else: the host has been gone for the grace period and another player is here. */
+export function hostDueAt(r: Room): number | null {
+  const host = r.players.find((x) => x.id === r.hostId);
+  if (!host || host.connected || host.goneAt === null) return null;
+  return r.players.some((x) => x.connected) ? host.goneAt + HOST_GRACE_MS : null;
+}
+
+/** Pass the host to the first connected player (join order) once it is due. True when the host changed. */
+export function passHost(r: Room, now: number): boolean {
+  const due = hostDueAt(r);
+  if (due === null || due > now) return false;
+  const next = r.players.find((x) => x.connected);
+  if (!next) return false;
+  r.hostId = next.id;
+  return true;
 }
 
 /** When the seat on turn should be played by the server, or null if a human is expected to move. */

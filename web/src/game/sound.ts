@@ -1,7 +1,21 @@
 import { useSyncExternalStore } from 'react';
 
 /** Kenney CC0 clips in `public/sounds/` (see `credits.txt` there). */
-export type Sound = 'move' | 'capture' | 'turn' | 'win' | 'lose';
+export type Sound =
+  | 'move'
+  | 'select'
+  | 'capture'
+  | 'chain'
+  | 'invalid'
+  | 'turn'
+  | 'tick'
+  | 'win'
+  | 'lose'
+  | 'draw'
+  | 'start'
+  | 'join'
+  | 'reaction'
+  | 'click';
 
 const KEY = 'muted';
 const listeners = new Set<() => void>();

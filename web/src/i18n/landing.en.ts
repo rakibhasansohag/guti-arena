@@ -11,7 +11,7 @@ export default {
   'footer.author': 'Rakib Hasan Sohag',
   'footer.source': 'Source code on GitHub',
   'footer.licence':
-    'Code under the MIT licence. Ground texture CC0, reaction emoji Noto (Apache 2.0).',
+    'Code under the MIT licence. Sounds and ground texture CC0, reaction emoji Noto (Apache 2.0).',
 
   // Landing: SEO
   'seo.title': 'Play four-colour Sholo Guti online, free | Guti Arena',

@@ -10,7 +10,7 @@ export default {
   'footer.madeBy': 'বানিয়েছেন',
   'footer.author': 'রাকিব হাসান সোহাগ',
   'footer.source': 'GitHub-এ সোর্স কোড',
-  'footer.licence': 'কোড MIT লাইসেন্সে। মাটির টেক্সচার CC0, রিঅ্যাকশন ইমোজি Noto (Apache 2.0)।',
+  'footer.licence': 'কোড MIT লাইসেন্সে। শব্দ ও মাটির টেক্সচার CC0, রিঅ্যাকশন ইমোজি Noto (Apache 2.0)।',
 
   // Landing: SEO
   'seo.title': 'অনলাইনে চার রঙের ষোলো গুটি খেলুন, বিনা মূল্যে | Guti Arena',

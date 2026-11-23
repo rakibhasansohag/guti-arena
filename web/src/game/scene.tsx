@@ -1,21 +1,16 @@
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import type { Look } from '@guti-arena/engine';
 import { COURT, LookContext } from './look.ts';
 import { motionPolicy, useSettings } from './settings.ts';
-import { setAmbienceCourt } from './sound.ts';
 
 /**
  * A game page in a look: the court's scene fills the page and everything inside draws that look.
- * A new scene fades in over the old one; the court's ambience plays while the page is open.
+ * A new scene fades in over the old one.
  */
 export function Scene({ look, children }: { look: Look; children: ReactNode }) {
   const court = COURT[look.court];
   const settings = useSettings();
-  useEffect(() => {
-    setAmbienceCourt(look.court);
-    return () => setAmbienceCourt(null);
-  }, [look.court]);
   return (
     <LookContext value={look}>
       <MotionConfig reducedMotion={motionPolicy(settings)}>

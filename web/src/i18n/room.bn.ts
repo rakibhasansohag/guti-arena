@@ -154,6 +154,7 @@ export default {
   'rooms.started': 'শুরু হয়ে গেছে',
   'rooms.full': 'ভরা',
   'rooms.locked': 'পাসওয়ার্ড লাগবে',
+  'rooms.password': 'পাসওয়ার্ড',
   'rooms.join': 'যোগ দিন',
   'rooms.watch': 'দেখুন',
   'rooms.loading': 'রুম খোঁজা হচ্ছে…',

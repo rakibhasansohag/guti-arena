@@ -144,17 +144,15 @@ Players can change the look of the court (the board surface and the page around 
 
 ## Sound
 
-Every clip was made with ElevenLabs sound effects (`eleven_text_to_sound_v3`) for this game: clay and stone pieces on swept earth, wood, and a village courtyard crowd. **No music anywhere**: no stings, melodies or instruments, in effects or ambience.
+Five Kenney CC0 clips (`web/public/sounds/`, see `credits.txt`): `move` and `capture` are Casino Audio chip sounds, `turn`, `win` and `lose` come from Interface Sounds. A chain plays `capture`, a draw plays `lose`; every other `Sound` name is silent. **No music and no background sound**: an ElevenLabs set and per-court ambience were tried and removed because they sounded worse.
 
-- **Effects** (`web/public/sounds/<name>.mp3`, one per `Sound`): mono MP3 96 kbps, silence trimmed, peaks about -1.5 dBFS with RMS capped at -20 dB so long clips (crowd cheer) do not outshout short knocks. `move`, `capture` and `chain` play with a random ±3% pitch so repeats sound handmade.
-- **Ambience** (`web/public/sounds/ambience/<court>.mp3`): a seamless 30 s loop per court (village afternoon, indoors with a ceiling fan, home courtyard, schoolyard after class, beach, crickets at night), mono MP3 64 kbps, about -34 LUFS: always well under the effects. Loaded only when the ambience slider is above zero; follows the court with a 1 s crossfade; pauses while the tab is hidden.
-- **Engine** (`web/src/game/sound.ts`): Web Audio, one `AudioContext` started on the first tap or key press (nothing plays before it). Effects are fetched and decoded once after that tap. Channels: master, effects, ambience, reactions; plays overlap, so a capture chain never cuts itself off. Volumes map to gain squared, so the slider feels even. If audio is blocked the game is silent, never broken.
+- **Engine** (`web/src/game/sound.ts`): Web Audio, one `AudioContext` started on the first tap or key press (nothing plays before it). Clips are fetched and decoded once after that tap. Channels: master and effects; plays overlap, so a capture chain never cuts itself off. `move`, `capture` and `chain` play with a random ±3% pitch so repeats sound handmade. Volumes map to gain squared, so the slider feels even. If audio is blocked the game is silent, never broken.
 
 ## Settings
 
 The gear in `GameHeader` (every game page, rooms included) opens the settings; holding it for half a second mutes or unmutes at once, and a small clay badge on the gear shows when sound is off. The panel is a bottom sheet on phones and a side sheet from the right from `sm`; it uses the clay card, `SEGMENT` pills, chunky clay slider tracks with a chalk pebble thumb, and on/off pills with a pebble knob. Each slider shows its value and plays a sample of its channel when let go.
 
-Saved per device as one object in `localStorage` under `settings` (`web/src/game/settings.ts`, `useSettings()`): master 80, effects 80, ambience 0, reactions 70 (0 to 100), mute, reaction bubbles (on: hides other players' bubbles when off, read with `useReactionBubbles()`), vibration (shown only where the device can buzz: a short buzz on a capture and on your turn) and reduce motion (device, on, off). The old `muted` key is migrated once.
+Saved per device as one object in `localStorage` under `settings` (`web/src/game/settings.ts`, `useSettings()`): master 80, effects 80 (0 to 100), mute, reaction bubbles (on: hides other players' bubbles when off, read with `useReactionBubbles()`), vibration (shown only where the device can buzz: a short buzz on a capture and on your turn) and reduce motion (device, on, off). The old `muted` key is migrated once.
 
 ## Free assets
 

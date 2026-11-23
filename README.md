@@ -28,7 +28,7 @@ Every game has its own guide with pictures and a move to try yourself, starting 
 - **Online with friends.** Make a room, send the link or the 5-letter code, and fill any empty seat with a computer player. Each turn has 30 seconds; if someone drops out, the computer covers their seat until they come back.
 - **Live rooms.** The host keeps a room private (link only), makes it public, or locks it with a password. Public and locked rooms show on the [live rooms page](https://guti.rakibhasansohag.com/rooms): take a free seat, find a room by its code, or watch a game in play. The host can remove a player from the lobby.
 - **Reactions.** Send a quick emoji or a short line to the table: "Nice move!", "Sorry!", "Hurry up!" and more. No free-text chat.
-- **Your own look and sound.** Pick the court (earth, wood, nakshi kantha, chalkboard, sand, night) and the pieces (pebbles, sweets, tea cups, marbles, buttons, shells) before the game. The Settings panel has separate volumes for effects, court sounds and reactions.
+- **Your own look and sound.** Pick the court (earth, wood, nakshi kantha, chalkboard, sand, night) and the pieces (pebbles, sweets, tea cups, marbles, buttons, shells) before the game. The Settings panel has the sound volume, mute, vibration and reduced motion.
 
 ## Rules in a minute
 
@@ -72,7 +72,7 @@ The game opens at http://localhost:5173. The online-room server runs alongside i
 
 Made by [Rakib Hasan Sohag](https://rakibhasansohag.com) ([GitHub](https://github.com/rakibhasansohag)).
 
-Sound effects and the court ambience were made for this project with [ElevenLabs](https://elevenlabs.io) sound effects, on a paid plan that allows commercial use. No music. The ground texture is from [Poly Haven](https://polyhaven.com), CC0. Reaction emoji: [Noto Emoji](https://github.com/googlefonts/noto-emoji) by Google, Apache License 2.0.
+Sound effects from [Kenney](https://kenney.nl), CC0. The ground texture is from [Poly Haven](https://polyhaven.com), CC0. Reaction emoji: [Noto Emoji](https://github.com/googlefonts/noto-emoji) by Google, Apache License 2.0.
 
 ## License
 

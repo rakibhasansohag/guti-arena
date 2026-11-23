@@ -156,6 +156,7 @@ export default {
   'rooms.started': 'Started',
   'rooms.full': 'Full',
   'rooms.locked': 'Needs a password',
+  'rooms.password': 'Password',
   'rooms.join': 'Join',
   'rooms.watch': 'Watch',
   'rooms.loading': 'Looking for rooms…',

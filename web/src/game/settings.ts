@@ -5,8 +5,6 @@ export interface Settings {
   /** Volumes, 0 to 100. */
   master: number;
   effects: number;
-  ambience: number;
-  reactions: number;
   /** One-tap mute: keeps the volumes. */
   muted: boolean;
   /** Show other players' reaction bubbles. */
@@ -19,8 +17,6 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   master: 80,
   effects: 80,
-  ambience: 0,
-  reactions: 70,
   muted: false,
   reactionBubbles: true,
   vibration: true,
@@ -42,8 +38,6 @@ export function parseSettings(raw: unknown): Settings {
   return {
     master: volume(o.master, d.master),
     effects: volume(o.effects, d.effects),
-    ambience: volume(o.ambience, d.ambience),
-    reactions: volume(o.reactions, d.reactions),
     muted: bool(o.muted, d.muted),
     reactionBubbles: bool(o.reactionBubbles, d.reactionBubbles),
     vibration: bool(o.vibration, d.vibration),

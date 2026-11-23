@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Dialog, Slider } from 'radix-ui';
-import { Bird, Settings as Gear, Smile, Volume2, VolumeX, X } from 'lucide-react';
+import { Settings as Gear, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -11,13 +11,11 @@ import { setSettings, useSettings, type Settings } from './settings.ts';
 import { play, type Sound } from './sound.ts';
 import { useNum } from './use-num.ts';
 
-type Channel = 'master' | 'effects' | 'ambience' | 'reactions';
-/** What each slider plays when you let go of it; ambience is heard as it plays. */
-const SAMPLE: Record<Channel, Sound | null> = {
+type Channel = 'master' | 'effects';
+/** What each slider plays when you let go of it. */
+const SAMPLE: Record<Channel, Sound> = {
   master: 'capture',
   effects: 'move',
-  ambience: null,
-  reactions: 'reaction',
 };
 const LONG_PRESS_MS = 550;
 
@@ -107,8 +105,7 @@ function Panel({ settings: s }: { settings: Settings }) {
         disabled={s.muted}
         onChange={(v) => setSettings({ [channel]: v })}
         onCommit={() => {
-          const sample = SAMPLE[channel];
-          if (sample) play(sample);
+          play(SAMPLE[channel]);
         }}
       />
     </li>
@@ -177,17 +174,6 @@ function Panel({ settings: s }: { settings: Settings }) {
                 <Pebble seat={0} />
               </svg>,
               t('settings.effects'),
-            )}
-            {row(
-              'ambience',
-              <Bird aria-hidden="true" className="size-5" />,
-              t('settings.ambience'),
-              t('settings.ambienceHint'),
-            )}
-            {row(
-              'reactions',
-              <Smile aria-hidden="true" className="size-5" />,
-              t('settings.reactions'),
             )}
           </ul>
 

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNum } from '@/game';
 import { BoardPreview } from '@/game/board-base';
+import { COURT } from '@/game/look';
 import { useT } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Seo } from '@/share';
@@ -301,56 +302,61 @@ function RoomCard({ room: r }: { room: RoomListing }) {
   const g = useT('game');
   const num = useNum();
   const open = free(r);
-  const status =
-    r.phase !== 'lobby'
-      ? t('rooms.started')
-      : open > 0
-        ? t('rooms.waiting', { free: num(open), seats: num(r.seats) })
-        : t('rooms.full');
-  const action = r.phase === 'lobby' && open > 0 ? 'join' : r.access === 'public' ? 'watch' : null;
+  const lobby = r.phase === 'lobby';
+  const locked = r.access === 'locked';
+  const status = !lobby
+    ? t('rooms.started')
+    : open > 0
+      ? t('rooms.waiting', { free: num(open), seats: num(r.seats) })
+      : t('rooms.full');
+  // Every listed room can be opened: a free lobby seat to join, otherwise to watch.
+  // A password room asks for its password on the room page first.
+  const action = lobby && open > 0 ? 'join' : 'watch';
   return (
-    <li className={cn(CARD, 'flex flex-col gap-4')}>
-      <div className="flex gap-4">
-        <div className="size-24 shrink-0 rounded-clay bg-chalk/60 p-1 shadow-clay sm:size-28 3xl:size-32">
+    <li className="flex flex-col overflow-hidden rounded-clay bg-card text-card-foreground shadow-clay">
+      {/* The room's own court and board, as players will see it. */}
+      <div
+        className="relative h-44 sm:h-48 3xl:h-56"
+        style={{ background: COURT[r.look.court].scene }}
+      >
+        <div className="absolute inset-x-4 top-12 bottom-4">
           <Preview board={r.board} court={r.look.court} pieces={r.look.pieces} />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <p className="flex items-center gap-2 font-display text-lg font-extrabold leading-tight sm:text-xl">
-            <span className="truncate">{g(`boards.${r.board}`)}</span>
-            {r.access === 'locked' && (
-              <Lock
-                role="img"
-                aria-label={t('rooms.locked')}
-                className="size-4 shrink-0 text-clay-deep"
-              />
-            )}
-          </p>
-          <p className="truncate text-sm sm:text-base">{t('rooms.host', { name: r.host })}</p>
-          <Pips room={r} />
-        </div>
-      </div>
-      {/* Its own row, so the status never wraps inside a narrow card. */}
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span
           className={cn(
-            'rounded-full px-3 py-1 font-display text-sm font-extrabold whitespace-nowrap',
-            r.phase !== 'lobby'
+            'absolute top-3 left-3 rounded-full px-3 py-1 font-display text-sm font-extrabold whitespace-nowrap shadow-clay',
+            !lobby
               ? 'bg-charcoal text-chalk'
               : open > 0
                 ? 'bg-clay-deep text-chalk'
-                : 'bg-chalk text-charcoal ring-1 ring-charcoal/30',
+                : 'bg-chalk text-charcoal',
           )}
         >
           {status}
         </span>
-        {r.phase !== 'lobby' && r.watchers > 0 && (
-          <span className="flex items-center gap-1 text-sm whitespace-nowrap">
-            <Eye aria-hidden="true" className="size-4" />
-            {t('watchers', { n: num(r.watchers) })}
+        {locked && (
+          <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-chalk px-2.5 py-1 font-display text-sm font-extrabold text-clay-deep shadow-clay">
+            <Lock aria-hidden="true" className="size-4" />
+            {t('rooms.password')}
           </span>
         )}
-      </p>
-      {action && (
+      </div>
+      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5 3xl:p-6">
+        <div className="min-w-0">
+          <p className="truncate font-display text-xl font-extrabold leading-tight 3xl:text-2xl">
+            {g(`boards.${r.board}`)}
+          </p>
+          <p className="truncate text-sm sm:text-base">{t('rooms.host', { name: r.host })}</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <Pips room={r} />
+          {!lobby && r.watchers > 0 && (
+            <span className="flex items-center gap-1 text-sm whitespace-nowrap">
+              <Eye aria-hidden="true" className="size-4" />
+              {t('watchers', { n: num(r.watchers) })}
+            </span>
+          )}
+        </div>
         <Button
           asChild
           variant={action === 'join' ? 'default' : 'secondary'}
@@ -358,13 +364,17 @@ function RoomCard({ room: r }: { room: RoomListing }) {
         >
           <Link
             to={`/r/${r.code}`}
-            aria-label={`${t(`rooms.${action}`)}: ${g(`boards.${r.board}`)}, ${t('rooms.host', { name: r.host })}`}
+            aria-label={`${t(`rooms.${action}`)}: ${g(`boards.${r.board}`)}, ${t('rooms.host', { name: r.host })}${locked ? `, ${t('rooms.locked')}` : ''}`}
           >
-            {action === 'watch' && <Eye aria-hidden="true" />}
+            {locked ? (
+              <Lock aria-hidden="true" />
+            ) : (
+              action === 'watch' && <Eye aria-hidden="true" />
+            )}
             {t(`rooms.${action}`)}
           </Link>
         </Button>
-      )}
+      </div>
     </li>
   );
 }

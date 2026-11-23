@@ -18,20 +18,34 @@ export const ReactionArt = ({ id, className }: { id: ReactionId; className?: str
   <img src={`/reactions/${id}.svg`} alt="" draggable={false} className={cn('size-6', className)} />
 );
 
-/** What a seat panel shows for a few seconds after that seat reacts. */
+const EMOJI = new Set<ReactionId>(TABS.emoji);
+
+/** What a seat panel shows for a few seconds after that seat reacts: an emoji alone, or words alone. */
 export function ReactionBubble({ id }: { id: ReactionId }) {
   const t = useT('room');
   const calm = useReducedMotion();
+  const emoji = EMOJI.has(id);
   return (
     <motion.span
       // A little wobble on arrival, like a pebble dropped on the court.
-      initial={calm ? false : { rotate: -8 }}
-      animate={{ rotate: 0 }}
+      initial={calm ? false : { rotate: -8, scale: emoji ? 0.6 : 1 }}
+      animate={{ rotate: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 500, damping: 12 }}
-      className="flex items-center gap-1.5 rounded-full bg-chalk py-1 pr-3 pl-1.5 font-display text-sm font-extrabold whitespace-nowrap text-charcoal shadow-clay-lift ring-2 ring-charcoal sm:text-base"
+      className={cn(
+        'flex items-center rounded-full bg-chalk text-charcoal shadow-clay-lift ring-2 ring-charcoal',
+        emoji
+          ? 'p-1'
+          : 'px-3 py-1.5 font-display text-sm font-extrabold whitespace-nowrap sm:text-base',
+      )}
     >
-      <ReactionArt id={id} className="size-7 sm:size-8" />
-      {t(`reaction.${id}`)}
+      {emoji ? (
+        <>
+          <ReactionArt id={id} className="size-9 sm:size-10" />
+          <span className="sr-only">{t(`reaction.${id}`)}</span>
+        </>
+      ) : (
+        t(`reaction.${id}`)
+      )}
     </motion.span>
   );
 }
@@ -206,14 +220,14 @@ export function ReactionButton({
                       'flex w-full items-center rounded-clay bg-charcoal/[0.06] transition-[translate,background-color,box-shadow] duration-[350ms,200ms,350ms] ease-clay hover:-translate-y-0.5 hover:bg-clay/25 hover:shadow-clay active:translate-y-px',
                       tab === 'emoji'
                         ? 'aspect-square justify-center'
-                        : 'h-12 gap-2 px-2 text-left font-display text-sm font-extrabold leading-tight sm:text-base',
+                        : 'h-12 justify-center px-2 text-center font-display text-sm font-extrabold leading-tight sm:text-base',
                     )}
                   >
-                    <ReactionArt
-                      id={id}
-                      className={tab === 'emoji' ? 'size-9 sm:size-10' : 'size-6 shrink-0'}
-                    />
-                    {tab === 'words' && t(`reaction.${id}`)}
+                    {tab === 'emoji' ? (
+                      <ReactionArt id={id} className="size-9 sm:size-10" />
+                    ) : (
+                      t(`reaction.${id}`)
+                    )}
                   </button>
                 </li>
               ))}

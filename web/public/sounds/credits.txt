@@ -1,10 +1,7 @@
-Sound effects and ambience loops generated for Guti Arena with ElevenLabs Sound Effects
-(eleven_text_to_sound_v3) on a paid plan that allows commercial use.
-No music in any clip.
-
-Effects (mono MP3, 96 kbps, silence trimmed, peaks about -1.5 dBFS, RMS capped at -20 dB):
-move, select, capture, chain, invalid, turn, tick, start, join, reaction, click, win, lose, draw
-
-Ambience (ambience/<court>.mp3, seamless 30 s loops, mono MP3, 64 kbps, about -34 LUFS):
-earth (village afternoon), wood (indoors, ceiling fan), kantha (home courtyard),
-slate (schoolyard after class), sand (beach), night (crickets and frogs)
+Sound effects from Kenney (www.kenney.nl), CC0 1.0 public domain:
+- move.mp3: Casino Audio, chip-lay-1
+- capture.mp3: Casino Audio, chips-collide-1
+- turn.mp3: Interface Sounds, glass_001
+- win.mp3: Interface Sounds, confirmation_002
+- lose.mp3: Interface Sounds, minimize_005
+Converted to mono MP3.

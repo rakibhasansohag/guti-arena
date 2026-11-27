@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { RoomListing } from '@guti-arena/engine';
+import { ipKey } from './room-logic.ts';
 
 /** Rows not refreshed for this long belong to rooms that died without removing themselves. */
 export const LIST_STALE_MS = 35 * 60_000;
@@ -24,6 +25,11 @@ export function sortRooms(rows: ListRow[]): RoomListing[] {
 
 /** Viewers of the live list at once; more are told to come back later. */
 const MAX_VIEWERS = 2000;
+/**
+ * Viewers one IP may hold, so one script can't take every slot. Generous, because a mobile
+ * carrier puts many people behind one shared IP.
+ */
+const MAX_VIEWERS_PER_IP = 20;
 /** Changes are pushed to viewers at most this often. */
 const PUSH_MS = 1000;
 
@@ -42,14 +48,19 @@ export class RoomList extends DurableObject<Env> {
     );
   }
 
-  override async fetch(): Promise<Response> {
+  override async fetch(request: Request): Promise<Response> {
     const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket];
-    if (this.ctx.getWebSockets().length >= MAX_VIEWERS) {
+    // Each socket is tagged with its IP's hash, so the count per IP survives hibernation.
+    const ip = await ipKey(request, 'list');
+    if (
+      this.ctx.getWebSockets().length >= MAX_VIEWERS ||
+      (ip && this.ctx.getWebSockets(ip).length >= MAX_VIEWERS_PER_IP)
+    ) {
       server.accept();
       server.close(4002, 'busy');
       return new Response(null, { status: 101, webSocket: client });
     }
-    this.ctx.acceptWebSocket(server);
+    this.ctx.acceptWebSocket(server, ip ? [ip] : []);
     server.send(JSON.stringify({ rooms: this.list() }));
     return new Response(null, { status: 101, webSocket: client });
   }

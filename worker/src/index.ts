@@ -7,6 +7,7 @@ import type {
 } from '@guti-arena/engine';
 import {
   CODE_RE,
+  allowedOrigin,
   block,
   botDueAt,
   canReact,
@@ -15,6 +16,7 @@ import {
   hashPassword,
   hostIdFor,
   hostDueAt,
+  ipKey,
   listing,
   newRoom,
   newSalt,
@@ -32,7 +34,12 @@ const MAX_SOCKETS = 16;
 /** Sockets one IP may hold in a room: a family on one Wi-Fi fills a four-seat board and still watches, one script can't fill the room. */
 const MAX_PER_IP = 6;
 const MAX_MESSAGE_BYTES = 1024;
-const MAX_PER_SECOND = 10;
+/**
+ * Messages a socket may send: a burst of 8 (tapping through looks or AI levels), then 4 a second.
+ * Play needs about 2 a second (a chain of jumps). The firewall rule never sees these messages.
+ */
+const BURST = 8;
+const PER_SECOND = 4;
 const CLEANUP_MS = 30 * 60_000;
 const MAX_WRONG_PASSWORDS = 5;
 /** Wrong passwords a room takes from all sockets in a minute, so reconnecting doesn't reset the guessing. */
@@ -59,16 +66,6 @@ interface Attachment {
   ip?: string;
 }
 
-/** A room-scoped hash of the caller's IP, so a removed device can be kept out without storing its address. */
-async function ipKey(request: Request, code: string): Promise<string | undefined> {
-  const ip = request.headers.get('CF-Connecting-IP');
-  if (!ip) return undefined;
-  const digest = new Uint8Array(
-    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${code}:${ip}`)),
-  );
-  return `ip:${[...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
-}
-
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 const send = (ws: WebSocket, m: ServerMessage) => {
   try {
@@ -84,13 +81,16 @@ const playerOf = (ws: WebSocket) => attachmentOf(ws).playerId;
 /** One instance per room, named by its code. Sockets use the Hibernation API so idle rooms cost nothing. */
 export class Room extends DurableObject<Env> {
   private saved: Saved | null = null;
-  private rates = new Map<WebSocket, { start: number; n: number }>();
+  /** Per socket: messages it may still send now, refilled at PER_SECOND. Lost on hibernation, which only refills it. */
+  private rates = new Map<WebSocket, { tokens: number; at: number }>();
   /** Last reaction per player, for the throttle. Lost on hibernation, which is harmless. */
   private reacted = new Map<string, number>();
   /** Wrong passwords this minute across every socket. In memory: a busy guesser keeps the room awake. */
   private wrong = { start: 0, n: 0 };
   /** One stub, so pushes from this room reach the list in order. */
   private list = this.env.ROOM_LIST.getByName('all');
+  /** The alarm this instance last set (null: none); undefined until it has set one. Each setAlarm is a row written. */
+  private alarmAt: number | null | undefined;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -128,9 +128,11 @@ export class Room extends DurableObject<Env> {
     }
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ playerId: null, ip } satisfies Attachment);
+    const wasEmpty = this.saved!.emptySince !== null;
     this.saved!.emptySince = null;
     // Everyone gets the state, so the watcher count includes this socket; it gets the redacted view.
-    await this.changed();
+    // Nothing saved changes unless the room was empty, so only then is it written.
+    await this.changed(undefined, wasEmpty);
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -139,9 +141,12 @@ export class Room extends DurableObject<Env> {
     if (!s) return;
     const now = Date.now();
 
-    const rate = this.rates.get(ws);
-    if (!rate || now - rate.start >= 1000) this.rates.set(ws, { start: now, n: 1 });
-    else if (++rate.n > MAX_PER_SECOND) return send(ws, { t: 'error', code: 'rate-limit' });
+    const rate = this.rates.get(ws) ?? { tokens: BURST, at: now };
+    rate.tokens = Math.min(BURST, rate.tokens + ((now - rate.at) / 1000) * PER_SECOND);
+    rate.at = now;
+    this.rates.set(ws, rate);
+    if (rate.tokens < 1) return send(ws, { t: 'error', code: 'rate-limit' });
+    rate.tokens -= 1;
 
     if (typeof raw !== 'string') return send(ws, { t: 'error', code: 'bad-message' });
     if (new TextEncoder().encode(raw).length > MAX_MESSAGE_BYTES) {
@@ -162,7 +167,7 @@ export class Room extends DurableObject<Env> {
     }
     const pending = passwordHash(m, s.room);
     const hash = pending && (await this.ctx.blockConcurrencyWhile(() => pending));
-    const hostBefore = s.room.hostId;
+    const before = JSON.stringify(s.room);
     const id = m.t === 'join' ? m.playerId : current;
     const removed =
       m.t === 'remove' ? s.room.players.find((p) => p.seat === m.seat)?.id : undefined;
@@ -204,9 +209,12 @@ export class Room extends DurableObject<Env> {
           if (!locked || playerOf(x) !== null) send(x, { t: 'reaction', seat, id: m.id });
         }
       }
-      if (s.room.hostId === hostBefore) return; // reactions are not saved
     }
-    await this.changed();
+    // A message that changed nothing (a repeated join, a reaction) is neither saved nor broadcast:
+    // every save costs rows written. A socket's first join always goes out, so it gets its state.
+    const dirty = JSON.stringify(s.room) !== before;
+    if (!dirty && !(m.t === 'join' && current === null)) return;
+    await this.changed(undefined, dirty);
   }
 
   override async webSocketClose(ws: WebSocket) {
@@ -214,14 +222,17 @@ export class Room extends DurableObject<Env> {
     const s = this.saved;
     if (!s) return;
     const now = Date.now();
+    const before = JSON.stringify(s.room);
     const others = this.ctx.getWebSockets().filter((x) => x !== ws);
     const id = playerOf(ws);
     if (id !== null && !others.some((x) => playerOf(x) === id)) disconnect(s.room, id, now);
     if (others.length === 0) s.emptySince = now;
-    await this.changed(ws);
+    // A watcher leaving changes only the count: broadcast it, but save only a real change.
+    await this.changed(ws, others.length === 0 || JSON.stringify(s.room) !== before);
   }
 
   override async alarm() {
+    this.alarmAt = null; // the alarm that woke us is spent
     const s = this.saved;
     if (!s) return;
     const now = Date.now();
@@ -240,9 +251,9 @@ export class Room extends DurableObject<Env> {
     else await this.commit();
   }
 
-  /** Save, tell every socket, keep the room list current, and schedule the next server move or cleanup. */
-  private async changed(closing?: WebSocket) {
-    await this.commit();
+  /** Save (unless `save` is false), tell every socket, keep the room list current, and schedule the next server move or cleanup. */
+  private async changed(closing?: WebSocket, save = true) {
+    if (save) await this.commit();
     const s = this.saved!;
     // A closing socket is still in the list while its close handler runs.
     const sockets = this.ctx.getWebSockets().filter((x) => x !== closing);
@@ -291,9 +302,12 @@ export class Room extends DurableObject<Env> {
       hostDueAt(s.room),
       s.emptySince === null ? null : s.emptySince + CLEANUP_MS,
     ];
-    const next = Math.min(...times.filter((t) => t !== null));
-    if (Number.isFinite(next)) await this.ctx.storage.setAlarm(next);
-    else await this.ctx.storage.deleteAlarm();
+    const min = Math.min(...times.filter((t) => t !== null));
+    const next = Number.isFinite(min) ? min : null;
+    if (next === this.alarmAt) return; // already set: another setAlarm would only cost a row
+    if (next === null) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(next);
+    this.alarmAt = next;
   }
 }
 
@@ -362,6 +376,9 @@ export default {
       const ip = request.headers.get('CF-Connecting-IP');
       if (ip && !(await env.API_LIMIT.limit({ key: ip })).success) {
         return json({ error: 'rate-limit' }, 429);
+      }
+      if (!allowedOrigin(request.headers.get('Origin'), request.url)) {
+        return json({ error: 'forbidden' }, 403);
       }
       if (pathname === '/api/rooms/live') {
         if (request.headers.get('Upgrade') !== 'websocket') {

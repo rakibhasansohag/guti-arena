@@ -14,8 +14,10 @@ import type { AiLevel, BoardId, GameState, Move, PointId, Seat } from './types.t
 type Choice = Move | 'end-chain';
 
 export interface AiOptions {
-  /** Hard search budget in visited nodes. Lower it only for tests. */
+  /** Hard search budget in visited nodes (the fast search on four-sided and hexagon boards). */
   nodeBudget?: number;
+  /** Node budget for the full-rules search used on Bagh-chal and Lau kata kati; none by default. */
+  plainNodeBudget?: number;
 }
 
 /**
@@ -37,8 +39,9 @@ export function chooseMove(s: GameState, level: AiLevel, opts: AiOptions = {}): 
   const isJump = (m: Move) => jumpedPoint(m, boardOf(s)) !== null;
   const id = boardOf(s).id;
   if (level !== 'easy') {
-    if (id === 'bagh') return plain(s, moves, level === 'hard' ? 4 : 2, baghScore);
-    if (id === 'lau') return plain(s, moves, level === 'hard' ? 6 : 2, lauScore);
+    const budget = opts.plainNodeBudget;
+    if (id === 'bagh') return plain(s, moves, level === 'hard' ? 4 : 2, baghScore, budget);
+    if (id === 'lau') return plain(s, moves, level === 'hard' ? 6 : 2, lauScore, budget);
   }
   if (level === 'easy') {
     const captures = moves.filter(isJump);
@@ -73,10 +76,19 @@ function lauScore(s: GameState): number {
 /**
  * Plain alpha-beta `depth` plies deep over the real rules, for the two-sided games whose rules
  * the fast search below does not know. `score` rates a position for seat 0, who maximises.
- * Ties are broken at random.
+ * Ties are broken at random. With a node `budget` it deepens one ply at a time and keeps the
+ * deepest search that finished inside it; without one it searches `depth` straight away.
  */
-function plain(s: GameState, moves: Move[], depth: number, score: (s: GameState) => number): Move {
+function plain(
+  s: GameState,
+  moves: Move[],
+  depth: number,
+  score: (s: GameState) => number,
+  budget = Infinity,
+): Move {
+  let nodes = 0;
   const search = (st: GameState, d: number, alpha: number, beta: number): number => {
+    if (++nodes > budget) throw new OutOfBudget();
     if (d === 0 || st.winner !== null)
       return score(st) + (st.winner === null ? 0 : d * Math.sign(score(st)));
     const max = st.turn === 0;
@@ -91,14 +103,23 @@ function plain(s: GameState, moves: Move[], depth: number, score: (s: GameState)
     return best;
   };
   const sign = s.turn === 0 ? 1 : -1;
-  let best: Move[] = [];
-  let bestV = -Infinity;
-  for (const m of moves) {
-    const v = sign * search(applyLegalMove(s, m), depth - 1, -Infinity, Infinity);
-    if (v > bestV) [best, bestV] = [[m], v];
-    else if (v === bestV) best.push(m);
+  let chosen = pick(moves); // if even one ply does not fit the budget
+  for (let d = Number.isFinite(budget) ? 1 : depth; d <= depth; d++) {
+    let best: Move[] = [];
+    let bestV = -Infinity;
+    try {
+      for (const m of moves) {
+        const v = sign * search(applyLegalMove(s, m), d - 1, -Infinity, Infinity);
+        if (v > bestV) [best, bestV] = [[m], v];
+        else if (v === bestV) best.push(m);
+      }
+    } catch (e) {
+      if (e instanceof OutOfBudget) break;
+      throw e;
+    }
+    chosen = pick(best);
   }
-  return pick(best);
+  return chosen;
 }
 
 /** Index-based board tables shared by medium's exposure count and hard's search. */

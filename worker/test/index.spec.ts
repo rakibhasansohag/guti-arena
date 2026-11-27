@@ -106,6 +106,70 @@ describe('worker', () => {
     a.ws.close();
   });
 
+  it('refuses other websites: an Origin that is not ours gets 403', async () => {
+    const evil = { Origin: 'https://evil.example' };
+    const post = await SELF.fetch('https://example.com/api/rooms', {
+      method: 'POST',
+      headers: evil,
+      body: '{}',
+    });
+    expect(post.status).toBe(403);
+    const ws = await SELF.fetch('https://example.com/api/rooms/BCDFG/ws', {
+      headers: { ...evil, Upgrade: 'websocket' },
+    });
+    expect(ws.status).toBe(403);
+    const ours = await SELF.fetch('https://example.com/api/rooms', {
+      method: 'POST',
+      headers: { Origin: 'https://example.com' },
+      body: '{}',
+    });
+    expect(ours.status).toBe(400); // past the origin check, stopped by the missing token
+  });
+
+  it('lets a socket burst 8 messages, then refills 4 a second; changes nothing, sends nothing', async () => {
+    const code = 'DDFFG';
+    await env.ROOM.getByName(code).create(code);
+    const a = await connect(code);
+    await a.take('state');
+    a.ws.send(JSON.stringify({ t: 'join', playerId: 'quiet-a', name: 'Ana' }));
+    await a.take('state');
+    await new Promise((r) => setTimeout(r, 300)); // the bucket refills to its burst of 8
+    a.clear();
+    const again = JSON.stringify({ t: 'join', playerId: 'quiet-a', name: 'Ana' });
+    for (let i = 0; i < 8; i++) a.ws.send(again);
+    await new Promise((r) => setTimeout(r, 150));
+    expect(a.inbox()).toEqual([]); // the same name again changes nothing: no save, no broadcast
+    a.ws.send(again);
+    expect(await a.take('error')).toEqual({ t: 'error', code: 'rate-limit' });
+    await new Promise((r) => setTimeout(r, 600)); // about 2 more allowed by now
+    a.ws.send(JSON.stringify({ t: 'join', playerId: 'quiet-a', name: 'Ana B' }));
+    expect((await a.take('state'))?.room.seats).toBeDefined(); // a real change goes out
+    a.ws.close();
+  });
+
+  it('caps live-list viewers per IP', async () => {
+    const open = async () => {
+      const res = await SELF.fetch('https://example.com/api/rooms/live', {
+        headers: { Upgrade: 'websocket', 'CF-Connecting-IP': '203.0.113.7' },
+      });
+      const ws = res.webSocket!;
+      const got: { closed?: number; listed?: boolean } = {};
+      ws.addEventListener('message', () => (got.listed = true));
+      ws.addEventListener('close', (e) => (got.closed = e.code));
+      ws.accept();
+      return { ws, got };
+    };
+    const kept = [];
+    for (let i = 0; i < 20; i++) kept.push(await open());
+    const extra = await open();
+    for (let i = 0; i < 100 && extra.got.closed === undefined; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    expect(extra.got.closed).toBe(4002);
+    expect(kept.every((k) => k.got.closed === undefined)).toBe(true);
+    for (const k of kept) k.ws.close();
+  });
+
   it('lists the room list; only GET and POST are allowed', async () => {
     expect((await SELF.fetch('https://example.com/api/rooms', { method: 'PUT' })).status).toBe(405);
     const res = await SELF.fetch('https://example.com/api/rooms');

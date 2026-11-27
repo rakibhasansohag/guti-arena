@@ -2,6 +2,8 @@ import { DEFAULT_LOOK, legalMoves, type ClientMessage } from '@guti-arena/engine
 import { describe, expect, it } from 'vitest';
 import {
   AI_DELAY_MS,
+  SERVER_AI,
+  allowedOrigin,
   COVER_AFTER_MS,
   HOST_GRACE_MS,
   TURN_MS,
@@ -360,5 +362,35 @@ describe('input', () => {
 
   it('makes 5-letter codes with no vowels', () => {
     for (let i = 0; i < 50; i++) expect(randomCode()).toMatch(CODE_RE);
+  });
+});
+
+describe('limits', () => {
+  it('accepts our own site, local dev and non-browser callers; refuses other sites', () => {
+    const url = 'https://guti.example.com/api/rooms';
+    expect(allowedOrigin(null, url)).toBe(true);
+    expect(allowedOrigin('https://guti.example.com', url)).toBe(true);
+    expect(allowedOrigin('http://localhost:5173', url)).toBe(true);
+    expect(allowedOrigin('http://b.localhost:5175', url)).toBe(true);
+    expect(allowedOrigin('https://evil.example', url)).toBe(false);
+    expect(allowedOrigin('https://guti.example.com.evil.example', url)).toBe(false);
+    expect(allowedOrigin('null', url)).toBe(false);
+  });
+
+  it('server AI seats play legal moves on every board inside the CPU budget', () => {
+    expect(SERVER_AI.nodeBudget).toBeLessThanOrEqual(1500);
+    for (const board of ['four', 'three', 'classic', 'quick', 'lau', 'bagh'] as const) {
+      const r = newRoom('BCDFG');
+      handle(r, 'h', { t: 'join', playerId: 'h', name: 'H' }, T0);
+      handle(r, 'h', { t: 'set-board', board }, T0);
+      for (const seat of [0, 1, 2, 3] as const)
+        handle(r, 'h', { t: 'set-ai', seat, level: 'hard' }, T0);
+      expect(handle(r, 'h', { t: 'start' }, T0)).toBeNull();
+      let now = T0;
+      for (let i = 0; i < 12 && r.phase === 'playing'; i++) {
+        now += AI_DELAY_MS;
+        expect(tick(r, now)).toBe(true);
+      }
+    }
   });
 });

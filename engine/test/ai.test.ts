@@ -64,6 +64,26 @@ describe('chooseMove', () => {
     }
   });
 
+  it('stays legal on Bagh-chal and Lau kata kati under any full-rules search budget', () => {
+    for (const board of ['bagh', 'lau'] as const) {
+      let s = createGame([0, 2], board);
+      for (let ply = 0; ply < 40 && s.winner === null; ply++) {
+        const legal = legalMoves(s);
+        // 1 node: not even one ply fits, so it falls back to a legal move; 300: the server's budget.
+        for (const plainNodeBudget of [1, 300]) {
+          for (const level of ['medium', 'hard'] as const) {
+            const c = chooseMove(s, level, { plainNodeBudget });
+            expect(c !== 'end-chain' && legal.some((m) => m.from === c.from && m.to === c.to)).toBe(
+              true,
+            );
+          }
+        }
+        const c = chooseMove(s, 'easy');
+        s = c === 'end-chain' ? endChain(s) : applyMove(s, c);
+      }
+    }
+  });
+
   it('plays a full four-seat hard game at the default budget', () => {
     const end = playGame([0, 1, 2, 3], { 0: 'hard', 1: 'medium', 2: 'easy', 3: 'medium' });
     expect(end.winner).not.toBeNull();

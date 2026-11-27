@@ -12,6 +12,7 @@ import {
   REACTIONS,
   type Access,
   type AiLevel,
+  type AiOptions,
   type BoardId,
   type ClientMessage,
   type GameState,
@@ -173,6 +174,39 @@ export async function hashPassword(password: string, salt: string): Promise<stri
   const data = new TextEncoder().encode(`${salt}:${password}`);
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return `${salt}:${[...digest].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/**
+ * A hash of the caller's IP within `scope` (a room code, or the room list), so devices can be
+ * counted and kept out without storing an address. Undefined where Cloudflare sends no IP (local tests).
+ */
+export async function ipKey(request: Request, scope: string): Promise<string | undefined> {
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (!ip) return undefined;
+  const digest = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${scope}:${ip}`)),
+  );
+  return `ip:${[...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/**
+ * True when a request may come from `origin`: our own site (same host) or a local dev server.
+ * Browsers always send Origin on WebSocket upgrades and POSTs, so another site can't make its
+ * visitors' browsers connect to rooms and spread load across their IPs. No Origin (non-browser) passes.
+ */
+export function allowedOrigin(origin: string | null, requestUrl: string): boolean {
+  if (origin === null) return true;
+  try {
+    const { host, hostname } = new URL(origin);
+    return (
+      host === new URL(requestUrl).host ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.endsWith('.localhost')
+    );
+  } catch {
+    return false;
+  }
 }
 
 export const newSalt = () =>
@@ -439,6 +473,13 @@ export function botDueAt(r: Room): number | null {
   return Math.min(r.turnDeadline, Math.max(lastChange + AI_DELAY_MS, p.goneAt + COVER_AFTER_MS));
 }
 
+/**
+ * Search budgets for every AI move the server plays. The Workers free plan allows about 10 ms of
+ * CPU per call; these keep a move at 2 to 4 ms (measured p95), so online Hard searches less deeply
+ * than Hard in a solo game, which runs on the player's own device.
+ */
+export const SERVER_AI: AiOptions = { nodeBudget: 1500, plainNodeBudget: 300 };
+
 /** Play one server move if one is due: an AI seat, a timed-out turn or a covered disconnect. */
 export function tick(r: Room, now: number): boolean {
   const due = botDueAt(r);
@@ -446,7 +487,7 @@ export function tick(r: Room, now: number): boolean {
   if (due === null || due > now || !g) return false;
   // Timeouts and covered disconnects play at medium; AI seats at their own level.
   const level = r.players.some((x) => x.seat === g.turn) ? 'medium' : (r.ai[g.turn] ?? 'medium');
-  const choice = chooseMove(g, level);
+  const choice = chooseMove(g, level, SERVER_AI);
   setGame(r, choice === 'end-chain' ? endChain(g) : applyMove(g, choice), now);
   return true;
 }
